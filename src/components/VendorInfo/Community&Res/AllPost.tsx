@@ -236,35 +236,35 @@ export default function SocialFeed() {
     );
   };
 
-  const handleReply = (postId: string, commentId: string, content: string) => {
-    setPosts(
-      posts.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              comments: post.comments.map((comment) =>
-                comment.id === commentId
-                  ? {
-                      ...comment,
-                      replies: [
-                        ...comment.replies,
-                        {
-                          id: Date.now().toString(),
-                          author: vendors[0], // Assuming the current user is the first vendor
-                          content,
-                          timestamp: "Just now",
-                          reactions: [],
-                          replies: [],
-                        },
-                      ],
-                    }
-                  : comment
-              ),
-            }
-          : post
-      )
-    );
-  };
+  // const handleReply = (postId: string, commentId: string, content: string) => {
+  //   setPosts(
+  //     posts.map((post) =>
+  //       post.id === postId
+  //         ? {
+  //             ...post,
+  //             comments: post.comments.map((comment) =>
+  //               comment.id === commentId
+  //                 ? {
+  //                     ...comment,
+  //                     replies: [
+  //                       ...comment.replies,
+  //                       {
+  //                         id: Date.now().toString(),
+  //                         author: vendors[0], // Assuming the current user is the first vendor
+  //                         content,
+  //                         timestamp: "Just now",
+  //                         reactions: [],
+  //                         replies: [],
+  //                       },
+  //                     ],
+  //                   }
+  //                 : comment
+  //             ),
+  //           }
+  //         : post
+  //     )
+  //   );
+  // };
 
   const handleReaction = (postId: string, commentId: string, emoji: string) => {
     setPosts(

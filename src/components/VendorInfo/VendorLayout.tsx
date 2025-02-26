@@ -2,7 +2,7 @@ import React from "react";
 import DashboardSidebar from "./DashboardSidebar";
 import VendorHeader from "./VendorHeader";
 import { Outlet } from "react-router-dom";
-import { useDarkMode } from "../Context/DarkModeContext";
+import { useDarkMode } from "../context/DarkModeContext";
  // Import dark mode context
 
 const VendorLayout: React.FC = () => {
