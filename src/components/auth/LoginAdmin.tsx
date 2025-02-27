@@ -106,7 +106,7 @@ const LoginAdmin = () => {
                     {...register("emailOrPhone", {
                       required: "Email or phone is required",
                     })}
-                    className="w-full p-2 border "
+                    className="w-full p-2 border border-gray-300 focus:outline-none focus:border-orange-600"
                     placeholder="Enter email or phone"
                   />
                   <p className="text-red-500 text-[10px]">
@@ -125,7 +125,7 @@ const LoginAdmin = () => {
                         message: "Password must be at least 8 characters",
                       },
                     })}
-                    className="w-full p-2 border "
+                    className="w-full p-2 border border-gray-300 focus:outline-none focus:border-orange-600"
                     placeholder="Enter password"
                   />
                   <p className="text-red-500 text-[10px]">

@@ -94,7 +94,7 @@ const SignupAdmin: React.FC = () => {
                   <input
                     type="text"
                     {...register("name", { required: "Full name is required" })}
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2 border border-gray-300 focus:outline-none focus:border-orange-600"
                   />
                   <p className="text-red-500 text-[10px]">{errors.name?.message}</p>
                 </div>
@@ -103,7 +103,7 @@ const SignupAdmin: React.FC = () => {
                   <input
                     type="email"
                     {...register("email", { required: "Email is required" })}
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2 border border-gray-300 focus:outline-none focus:border-orange-600"
                   />
                   <p className="text-red-500 text-[10px]">
                     {errors.email?.message}
@@ -118,7 +118,7 @@ const SignupAdmin: React.FC = () => {
                       required: "Password is required",
                       minLength: 8,
                     })}
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2 border border-gray-300 focus:outline-none focus:border-orange-600"
                   />
                   <p className="text-red-500 text-[10px]">
                     {errors.password?.message}
