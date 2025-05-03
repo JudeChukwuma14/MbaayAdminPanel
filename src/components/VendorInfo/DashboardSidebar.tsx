@@ -78,8 +78,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ darkMode }) => {
         />
         <div>
           <p className="text-sm font-semibold">
-            {user.admin.name.charAt(0).toUpperCase() +
-              user.admin.name.slice("1")}
+            {user?.admin?.name?.charAt(0)?.toUpperCase() +
+              user?.admin?.name?.slice("1")}
           </p>
           <div className="flex mt-2 items-center justify-center">
             <div className="w-[12px] h-[12px] bg-green-500 rounded-full "></div>
