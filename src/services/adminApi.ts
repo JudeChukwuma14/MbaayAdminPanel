@@ -16,6 +16,7 @@ export const createAdmin = async (userData: any) => {
    }
 
 };
+
 export const loginAdmin = async (userData: any) => {
   try {
     const response = await api.post("/login_admin", userData);

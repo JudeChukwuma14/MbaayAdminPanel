@@ -95,19 +95,19 @@ const RequestDetailPage: React.FC = () => {
       <div className="bg-white shadow-md rounded-lg p-4">
         <div className="flex items-center mb-2">
           <div className="w-[50px] h-[50px] rounded-full bg-orange-300 mr-2 flex items-center justify-center text-white text-[20px]">
-            <p>{request.userName.charAt(0).toUpperCase()}</p>
+            <p>{request?.userName?.charAt(0)?.toUpperCase()}</p>
           </div>
           <div>
-            <h1 className="text-xl font-bold">{request.userName}</h1>
-            <p className="text-gray-600 text-xs">{request.storeName}</p>
+            <h1 className="text-xl font-bold">{request?.userName}</h1>
+            <p className="text-gray-600 text-xs">{request?.storeName}</p>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
           <div>
             <h2 className="text-lg font-semibold mb-1">Vendor Information</h2>
-            <p><strong>Email:</strong> {request.email}</p>
-            <p><strong>Phone:</strong> {request.storePhone}</p>
-            <p><strong>Category:</strong> {request.craftCategories}</p>
+            <p><strong>Email:</strong> {request?.email}</p>
+            <p><strong>Phone:</strong> {request?.storePhone}</p>
+            <p><strong>Category:</strong> {request?.craftCategories}</p>
             <div className="mt-1">
               <strong>Store Type:</strong>
               <div className="mt-1 flex space-x-1">
@@ -131,8 +131,8 @@ const RequestDetailPage: React.FC = () => {
           </div>
           <div>
             <h2 className="text-lg font-semibold mb-1">Store Details</h2>
-            <p><strong>Country:</strong> {request.country}</p>
-            <p><strong>Address:</strong> {request.address1}</p>
+            <p><strong>Country:</strong> {request?.country}</p>
+            <p><strong>Address:</strong> {request?.address1}</p>
             <p>
               <strong>Status:</strong>{" "}
               <span
@@ -144,11 +144,11 @@ const RequestDetailPage: React.FC = () => {
                     : "text-blue-600"
                 }`}
               >
-                {request.verificationStatus}
+                {request?.verificationStatus}
               </span>
             </p>
             <p>
-              <strong>Created At:</strong> {new Date(request.createdAt).toLocaleString()}
+              <strong>Created At:</strong> {new Date(request?.createdAt).toLocaleString()}
             </p>
           </div>
         </div>
@@ -156,13 +156,13 @@ const RequestDetailPage: React.FC = () => {
           <h2 className="text-lg font-semibold mb-1">Store Logo</h2>
           <img
             src={mbayy}
-            alt={`${request.storeName} logo`}
+            alt={`${request?.storeName} logo`}
             className="w-16 h-16 object-contain border border-gray-200 rounded-lg"
           />
         </div>
         <div className="mt-2">
           <h2 className="text-lg font-semibold mb-1">Description</h2>
-          <p className="text-xs text-gray-700">{request.description}</p>
+          <p className="text-xs text-gray-700">{request?.description}</p>
         </div>
         <div className="mt-2 flex space-x-2">
           {request.verificationStatus === "Pending" && (
