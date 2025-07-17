@@ -1,4 +1,4 @@
-import  { useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { FiUploadCloud } from "react-icons/fi";
 import { CiVideoOn } from "react-icons/ci";
@@ -16,8 +16,7 @@ const NewProduct = () => {
   const [price, setPrice] = useState("");
   const [comparePrice, setComparePrice] = useState("");
   // const [value, setValue] = useState("");
-  
-  
+
   // const toolbarOptions = [['bold', 'italic'], ['link', 'image']];
 
   const handleDiscard = () => {
@@ -105,20 +104,20 @@ const NewProduct = () => {
           </motion.select>
         </motion.div>
 
-          {/* Product Video Section */}
+        {/* Product Video Section */}
         <motion.div
           className="bg-white p-5 rounded-lg shadow space-y-4"
           initial={{ x: 50, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
-         <div className="flex justify-between items-center space-x-2">
-           <h2 className="text-lg font-semibold">Product Video (Optional)</h2>
-          <div className="flex justify-between items-center cursor-pointer">
-            <FaYoutube size={30} className="mr-1 text-red-600" />
-            <h4 className="text-blue-600">Add youtube video</h4>
+          <div className="flex justify-between items-center space-x-2">
+            <h2 className="text-lg font-semibold">Product Video (Optional)</h2>
+            <div className="flex justify-between items-center cursor-pointer">
+              <FaYoutube size={30} className="mr-1 text-red-600" />
+              <h4 className="text-blue-600">Add youtube video</h4>
+            </div>
           </div>
-         </div>
           <div className="border-dashed border-2 border-orange-500 p-5 rounded-lg text-center space-y-2">
             <CiVideoOn size={40} className="mx-auto text-gray-400" />
             <p>Click to upload or drag and drop</p>

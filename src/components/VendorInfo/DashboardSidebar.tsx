@@ -10,9 +10,9 @@ import {
   MessageSquare,
   LogOutIcon,
   ChevronDown,
-  Inbox,
+  GroupIcon,
+  Verified,
 } from "lucide-react";
-import { IoGitPullRequest } from "react-icons/io5";
 import { MdOutlineReviews, MdSell } from "react-icons/md";
 import { FaUsers } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -42,8 +42,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ darkMode }) => {
             Icon={Box}
           />
           <NavItem title="Customers" to="customers" Icon={Users} />
-          <NavItem title="Inbox" to="inbox" Icon={Inbox} />
-          <NavItem title="Request" to="requests" Icon={IoGitPullRequest} />
+          <NavItem title="Inbox" to="inbox" Icon={MessageSquare} />
+          <NavItem
+            title="Verifications"
+            subItems={["Requests", "KYC"]}
+            Icon={Verified}
+          />
+          {/* <NavItem title="Request" to="requests" Icon={IoGitPullRequest} /> */}
           <NavItem title="All Users" to="all-users" Icon={FaUsers} />
           <NavItem title="All Vendors" to="all-vendors" Icon={MdSell} />
           <NavItem title="Reviews" to="reviews" Icon={MdOutlineReviews} />
@@ -55,17 +60,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ darkMode }) => {
           />
           <NavItem
             title="Settings"
-            subItems={[
-              "Edit Vendor Profile",
-              "KYC Verification",
-              "General Setting",
-            ]}
+            subItems={["Edit Vendor Profile", "General Setting"]}
             Icon={Settings}
           />
           <NavItem
             title="Community"
             subItems={["All Post", "Profile"]}
-            Icon={MessageSquare}
+            Icon={GroupIcon}
           />
           <NavItem title="LogOut" to="logout" Icon={LogOutIcon} />
         </nav>
