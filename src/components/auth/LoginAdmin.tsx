@@ -10,6 +10,7 @@ import Silding from "../reuseable/Sliding";
 import { Logo } from "../../assets/image";
 import { setAdmin } from "../redux/slices/adminSlice";
 import { loginAdmin } from "../../services/adminApi";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const bg = {
   backgroundImage: `url(${background})`,
@@ -24,7 +25,7 @@ const LoginAdmin = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const {
     register,
     handleSubmit,
@@ -106,7 +107,7 @@ const LoginAdmin = () => {
                     {...register("emailOrPhone", {
                       required: "Email or phone is required",
                     })}
-                    className="w-full p-2 border border-gray-300 focus:outline-none focus:border-orange-600"
+                   className="w-full p-3 mt-1 transition border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="Enter email or phone"
                   />
                   <p className="text-red-500 text-[10px]">
@@ -116,21 +117,31 @@ const LoginAdmin = () => {
 
                 <div>
                   <label className="block text-sm font-medium">Password</label>
-                  <input
-                    type="password"
-                    {...register("password", {
-                      required: "Password is required",
-                      minLength: {
-                        value: 8,
-                        message: "Password must be at least 8 characters",
-                      },
-                    })}
-                    className="w-full p-2 border border-gray-300 focus:outline-none focus:border-orange-600"
-                    placeholder="Enter password"
-                  />
-                  <p className="text-red-500 text-[10px]">
-                    {errors.password?.message}
-                  </p>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter password"
+                      className="w-full p-3 mt-1 transition border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      {...register("password", {
+                        required: "Password is required",
+                        minLength: {
+                          value: 6,
+                          message: "Password must be at least 6 characters",
+                        },
+                      })}
+                    />
+                    <span
+                      className="absolute text-gray-500 cursor-pointer right-5 top-5"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </span>
+                    {errors.password && (
+                      <p className="mt-1 text-sm text-red-500">
+                        {errors.password.message}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center">
