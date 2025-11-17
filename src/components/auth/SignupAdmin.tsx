@@ -3,23 +3,32 @@ import { FcGoogle } from "react-icons/fc";
 import background from "../../assets/image/bg2.jpeg";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { createAdmin } from "../../services/adminApi";
 import Silding from "../reuseable/Sliding";
 import { Logo } from "../../assets/image";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 const bg = {
   backgroundImage: `url(${background})`,
 };
+enum AdminRole {
+  Admin = "Admin",
+  CustomerCare = "Customer care",
+  SuperAdmin = "Super Admin",
+}
+
 type FormData = {
   name: string;
   email: string;
   password: string;
+  role: AdminRole;
 };
 
 const SignupAdmin: React.FC = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const {
     register,
     handleSubmit,
@@ -31,14 +40,13 @@ const SignupAdmin: React.FC = () => {
     try {
       const response = await createAdmin(data);
       console.log("Register logs", response);
-      toast.success(response.message, {
+      toast.success(`${response?.data?.role} created successfully `, {
         position: "top-right",
         autoClose: 3000,
       });
       navigate("/login-admin");
-    } catch (error: unknown) {
-      console.log(error);
-      toast.error((error as Error)?.message || "An unexpected error occurred", {
+    } catch (err) {
+      toast.error((err as Error)?.message || String(err), {
         position: "top-right",
         autoClose: 4000,
       });
@@ -49,61 +57,54 @@ const SignupAdmin: React.FC = () => {
 
   return (
     <div className="w-full h-screen">
-      <ToastContainer />
       <div className="flex flex-col md:flex-row">
         <Silding />
         <motion.div
           style={bg}
           className="bg-center bg-no-repeat bg-cover w-full min-h-screen px-4 lg:ml-[500px]"
         >
-          <div className="flex justify-between items-center px-4 my-6">
+          <div className="flex items-center justify-between px-4 my-6">
             <div className="lg:hidden">
               <img src={Logo} width={50} alt="" />
             </div>
-            <div className="w-full hidden text-end lg:block">
+            <div className="hidden w-full text-end lg:block">
               <span className="text-gray-600">Already have an account? </span>
               <Link to="/login-admin">
-                <span className="text-blue-500 hover:underline">
-                  Sign in
-                </span>
+                <span className="text-blue-500 hover:underline">Sign in</span>
               </Link>
             </div>
           </div>
 
           <div className="flex items-center justify-center min-h-screen ">
             <div className="w-full max-w-md p-6">
-              <h2 className="text-2xl font-semibold text-left mb-4">
+              <h2 className="mb-4 text-2xl font-semibold text-left">
                 Register
               </h2>
-              <p>Sign up with</p>
-
-              <motion.button className="w-full py-2 mb-4 border rounded-md flex items-center justify-center">
-                <span className="text-xl">
-                  <FcGoogle />
-                </span>
-              </motion.button>
-
-              <div className="text-left text-black font-bold mb-4">OR</div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <h1 className="text-left text-black font-bold mb-4">
-                  Your Name
-                </h1>
                 <div>
                   <label className="block text-sm font-medium">Full Name</label>
                   <input
                     type="text"
                     {...register("name", { required: "Full name is required" })}
-                    className="w-full p-2 border border-gray-300 focus:outline-none focus:border-orange-600"
+                    className="w-full p-3 mt-1 transition border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
-                  <p className="text-red-500 text-[10px]">{errors.name?.message}</p>
+                  <p className="text-red-500 text-[10px]">
+                    {errors.name?.message}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium">Email</label>
                   <input
                     type="email"
-                    {...register("email", { required: "Email is required" })}
-                    className="w-full p-2 border border-gray-300 focus:outline-none focus:border-orange-600"
+                    {...register("email", {
+                      required: "Email is required",
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: "Invalid email address",
+                      },
+                    })}
+                    className="w-full p-3 mt-1 transition border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                   <p className="text-red-500 text-[10px]">
                     {errors.email?.message}
@@ -112,48 +113,76 @@ const SignupAdmin: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium">Password</label>
-                  <input
-                    type="password"
-                    {...register("password", {
-                      required: "Password is required",
-                      minLength: 8,
-                    })}
-                    className="w-full p-2 border border-gray-300 focus:outline-none focus:border-orange-600"
-                  />
-                  <p className="text-red-500 text-[10px]">
-                    {errors.password?.message}
-                  </p>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter password"
+                      className="w-full p-3 mt-1 transition border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      {...register("password", {
+                        required: "Password is required",
+                        minLength: {
+                          value: 6,
+                          message: "Password must be at least 6 characters",
+                        },
+                      })}
+                    />
+                    <span
+                      className="absolute text-gray-500 cursor-pointer right-5 top-5"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </span>
+                    {errors.password && (
+                      <p className="mt-1 text-sm text-red-500">
+                        {errors.password.message}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex items-center">
-                  <motion.input type="checkbox" className="mr-2" />
-                  <label className="text-sm">
-                    I agree to the{" "}
-                    <a href="#" className="text-blue-500">
-                      Terms & Conditions
-                    </a>
-                  </label>
+                <div>
+                  <label className="block text-sm font-medium">Role</label>
+                  <select
+                    {...register("role", { required: "Please select a role" })}
+                    className="w-full p-3 mt-1 transition border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">Select a role</option>
+                    {Object.values(AdminRole).map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.role && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {errors.role.message}
+                    </p>
+                  )}
                 </div>
 
-                <div className="flex items-center">
-                  <motion.input type="checkbox" className="mr-2" />
-                  <label className="text-sm">Keep me logged in</label>
-                </div>
                 <button
                   type="submit"
-                  className="w-full bg-orange-500 text-white p-3 font-semibold rounded-md hover:bg-orange-600 transition duration-300 flex items-center justify-center"
+                  className="flex items-center justify-center w-full p-3 font-semibold text-white transition duration-300 bg-orange-500 rounded-md hover:bg-orange-600"
                   disabled={isLoading}
                 >
                   {isLoading ? (
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                    <div className="w-6 h-6 border-b-2 border-white rounded-full animate-spin"></div>
                   ) : (
                     "Sign up"
                   )}
                 </button>
+                <motion.button className="flex items-center justify-center w-full py-2 mb-4 border rounded-md">
+                  <span className="flex items-center gap-2 text-lg text-gray-600">
+                    <FcGoogle size={20} /> Google
+                  </span>
+                </motion.button>
               </form>
-              <div className="block lg:hidden text-left my-2">
+              <div className="block my-2 text-left lg:hidden">
                 <span className="text-gray-600">Don't have an Account? </span>
-                <Link to="/login-admin" className="text-blue-500 hover:underline">
+                <Link
+                  to="/login-admin"
+                  className="text-blue-500 hover:underline"
+                >
                   Sign in
                 </Link>
               </div>
