@@ -25,6 +25,10 @@ import {
   // MessageSquare,
 } from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
+import axios from "axios";
+import { useSelector } from "react-redux";
+import { RootState } from "../redux/store";
+import { useNavigate } from "react-router-dom";
 
 interface Message {
   id: string;
@@ -88,6 +92,9 @@ interface StoredData {
 }
 
 export default function ChatInterface() {
+  const adminToken = useSelector((state: RootState) => state.admin.token);
+  const navigate = useNavigate();
+  const API_CHAT_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/admin";
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<string>("");
   const [message, setMessage] = useState("");
@@ -128,6 +135,13 @@ export default function ChatInterface() {
     loadFromLocalStorage();
   }, []);
 
+  // Fetch all customer care chats for the sidebar
+  useEffect(() => {
+    if (adminToken) {
+      fetchCustomerCareChats();
+    }
+  }, [adminToken]);
+
   useEffect(() => {
     saveToLocalStorage();
   }, [chats, activeChat]);
@@ -139,6 +153,75 @@ export default function ChatInterface() {
       return true;
     } catch (e) {
       return false;
+    }
+  };
+
+  const fetchCustomerCareChats = async () => {
+    try {
+      const res = await axios.get(
+        `${API_CHAT_BASE_URL}/customer_care_messages`,
+        {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        }
+      );
+      console.log("Res", res);
+      const raw = (res.data?.chats ||
+        res.data?.data ||
+        res.data ||
+        []) as any[];
+      const mapped: Chat[] = raw.map((c: any) => {
+        const last =
+          c.lastMessage ||
+          c.latestMessage ||
+          c.messages?.[c.messages?.length - 1] ||
+          {};
+        return {
+          id: c._id || c.id,
+          name:
+            c.user?.name ||
+            c.customer?.name ||
+            c.vendor?.name ||
+            c.title ||
+            "Conversation",
+          avatar:
+            c.user?.avatar || c.customer?.avatar || c.vendor?.avatar || "",
+          lastMessage: last.content || last.text || "",
+          timestamp: new Date(
+            c.updatedAt || last.createdAt || Date.now()
+          ).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          isVendor: !!c.vendor,
+          isOnline: Boolean(c.user?.isOnline || c.customer?.isOnline || false),
+          messages: Array.isArray(c.messages)
+            ? c.messages.map((m: any) => ({
+                id: m._id || m.id,
+                content: m.content || m.text || "",
+                sender: m.senderName || m.sender?.name || "User",
+                timestamp: new Date(
+                  m.createdAt || Date.now()
+                ).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+                isVendor: !!m.isVendor,
+                deletedFor: "none",
+              }))
+            : [],
+          pinnedMessageId: undefined,
+          unreadCount: typeof c.unreadCount === "number" ? c.unreadCount : 0,
+        } as Chat;
+      });
+      setChats(mapped);
+      if (mapped.length && !activeChat) {
+        setActiveChat(mapped[0].id);
+      }
+    } catch (error: any) {
+      console.error(
+        "Failed to fetch customer care chats:",
+        error.response?.data || error.message
+      );
     }
   };
 
@@ -724,21 +807,21 @@ export default function ChatInterface() {
       <motion.div
         initial={{ x: -300, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        className="w-80 border-r bg-white"
+        className="bg-white border-r w-80"
       >
         <div className="p-4 border-b">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center justify-between mb-4">
             <h1 className="text-xl font-bold">Chats</h1>
-            <motion.button className="p-2 hover:bg-gray-100 rounded-full">
+            <motion.button className="p-2 rounded-full hover:bg-gray-100">
               <Plus className="w-5 h-5" />
             </motion.button>
           </div>
           <div className="relative">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Search className="absolute w-5 h-5 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
             <input
               type="text"
               placeholder="Search message"
-              className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full py-2 pl-10 pr-4 text-sm bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
         </div>
@@ -763,11 +846,11 @@ export default function ChatInterface() {
                     className="w-12 h-12 rounded-full"
                   />
                   {chat.isOnline && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                   )}
                 </div>
                 <div className="flex-1 text-left">
-                  <div className="flex justify-between items-start">
+                  <div className="flex items-start justify-between">
                     <div>
                       <p className="font-semibold">{chat.name}</p>
                       <span className="text-xs text-orange-500">
@@ -778,12 +861,12 @@ export default function ChatInterface() {
                       {chat.timestamp}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500 mt-1 truncate">
+                  <p className="mt-1 text-sm text-gray-500 truncate">
                     {chat.lastMessage}
                   </p>
                 </div>
                 {chat.unreadCount > 0 && (
-                  <span className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                  <span className="absolute px-2 py-1 text-xs font-bold text-white transform -translate-y-1/2 bg-orange-500 rounded-full right-4 top-1/2">
                     {chat.unreadCount}
                   </span>
                 )}
@@ -794,7 +877,7 @@ export default function ChatInterface() {
       </motion.div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex flex-col flex-1">
         {activeChat ? (
           <>
             {/* Chat Header */}
@@ -802,7 +885,7 @@ export default function ChatInterface() {
               <motion.div
                 initial={{ y: -50, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                className="p-4 border-b bg-white flex items-center gap-3"
+                className="flex items-center gap-3 p-4 bg-white border-b"
               >
                 <div className="relative">
                   <img
@@ -811,7 +894,7 @@ export default function ChatInterface() {
                     className="w-10 h-10 rounded-full"
                   />
                   {activeChatDetails.isOnline && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                   )}
                 </div>
                 <div>
@@ -825,7 +908,7 @@ export default function ChatInterface() {
 
             {/* Pinned Message */}
             {pinnedMessage && (
-              <div className="bg-orange-100 p-2 flex items-center justify-between">
+              <div className="flex items-center justify-between p-2 bg-orange-100">
                 <div className="flex items-center gap-2">
                   <Pin className="w-4 h-4 text-orange-500" />
                   <p className="text-sm text-orange-700 truncate">
@@ -843,13 +926,13 @@ export default function ChatInterface() {
 
             {/* Feedback Message */}
             {feedbackMessage && (
-              <div className="bg-green-100 p-2 text-center text-green-800">
+              <div className="p-2 text-center text-green-800 bg-green-100">
                 {feedbackMessage}
               </div>
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 p-4 overflow-y-auto">
               <AnimatePresence>
                 {activeMessages.length > 0 ? (
                   activeMessages
@@ -881,7 +964,7 @@ export default function ChatInterface() {
                           }`}
                         >
                           {msg.replyTo && (
-                            <div className="bg-gray-100 p-2 rounded-t-lg text-sm text-gray-600 mb-1">
+                            <div className="p-2 mb-1 text-sm text-gray-600 bg-gray-100 rounded-t-lg">
                               Replying to:{" "}
                               {activeMessages
                                 .find((m) => m.id === msg.replyTo)
@@ -913,7 +996,7 @@ export default function ChatInterface() {
                                         {msg.files.map((file, i) => (
                                           <div
                                             key={i}
-                                            className="relative aspect-square rounded-lg overflow-hidden cursor-pointer"
+                                            className="relative overflow-hidden rounded-lg cursor-pointer aspect-square"
                                             onClick={() =>
                                               handleViewImages(
                                                 msg
@@ -931,7 +1014,7 @@ export default function ChatInterface() {
                                             <img
                                               src={file.url}
                                               alt={file.name}
-                                              className="w-full h-full object-cover"
+                                              className="object-cover w-full h-full"
                                             />
                                           </div>
                                         ))}
@@ -943,7 +1026,7 @@ export default function ChatInterface() {
                                           .map((file, i) => (
                                             <div
                                               key={i}
-                                              className="relative aspect-square rounded-lg overflow-hidden cursor-pointer"
+                                              className="relative overflow-hidden rounded-lg cursor-pointer aspect-square"
                                               onClick={() =>
                                                 handleViewImages(
                                                   msg
@@ -961,12 +1044,12 @@ export default function ChatInterface() {
                                               <img
                                                 src={file.url}
                                                 alt={file.name}
-                                                className="w-full h-full object-cover"
+                                                className="object-cover w-full h-full"
                                               />
                                               {i === 3 &&
                                                 msg.files &&
                                                 msg.files.length > 4 && (
-                                                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white font-bold text-xl">
+                                                  <div className="absolute inset-0 flex items-center justify-center text-xl font-bold text-white bg-black bg-opacity-50">
                                                     +{msg.files.length - 4}
                                                   </div>
                                                 )}
@@ -978,7 +1061,7 @@ export default function ChatInterface() {
                                 ) : msg.files[0].type === "video" ? (
                                   <div className="relative">
                                     <div
-                                      className="relative cursor-pointer rounded-lg overflow-hidden bg-black"
+                                      className="relative overflow-hidden bg-black rounded-lg cursor-pointer"
                                       onClick={() =>
                                         msg.files &&
                                         handlePlayVideo(msg.files[0].url)
@@ -992,7 +1075,7 @@ export default function ChatInterface() {
                                       <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
                                         <Play className="w-12 h-12 text-white" />
                                       </div>
-                                      <div className="absolute bottom-2 left-2 text-white text-sm">
+                                      <div className="absolute text-sm text-white bottom-2 left-2">
                                         {msg.files[0].duration}
                                       </div>
                                     </div>
@@ -1002,7 +1085,7 @@ export default function ChatInterface() {
                                     {msg.files.map((file, i) => (
                                       <div
                                         key={i}
-                                        className="flex items-center gap-2 bg-white/10 p-2 rounded"
+                                        className="flex items-center gap-2 p-2 rounded bg-white/10"
                                       >
                                         <Paperclip className="w-4 h-4" />
                                         <span>
@@ -1039,35 +1122,35 @@ export default function ChatInterface() {
                           >
                             {msg.timestamp}
                             {msg.isEdited && (
-                              <span className="text-gray-400 ml-1">
+                              <span className="ml-1 text-gray-400">
                                 (edited)
                               </span>
                             )}
                             <div className="flex gap-2 ml-2">
                               <button
                                 onClick={() => handleReply(msg.id)}
-                                className="hover:text-orange-500 group relative"
+                                className="relative hover:text-orange-500 group"
                               >
                                 <Reply className="w-4 h-4" />
-                                <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="absolute px-2 py-1 text-xs text-white transition-opacity transform -translate-x-1/2 bg-gray-800 rounded opacity-0 bottom-full left-1/2 group-hover:opacity-100">
                                   Reply
                                 </span>
                               </button>
                               <button
                                 onClick={() => handleCopyText(msg.content)}
-                                className="hover:text-orange-500 group relative"
+                                className="relative hover:text-orange-500 group"
                               >
                                 <Copy className="w-4 h-4" />
-                                <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="absolute px-2 py-1 text-xs text-white transition-opacity transform -translate-x-1/2 bg-gray-800 rounded opacity-0 bottom-full left-1/2 group-hover:opacity-100">
                                   Copy
                                 </span>
                               </button>
                               <button
                                 onClick={() => handleForward(msg.id)}
-                                className="hover:text-orange-500 group relative"
+                                className="relative hover:text-orange-500 group"
                               >
                                 <Forward className="w-4 h-4" />
-                                <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="absolute px-2 py-1 text-xs text-white transition-opacity transform -translate-x-1/2 bg-gray-800 rounded opacity-0 bottom-full left-1/2 group-hover:opacity-100">
                                   Forward
                                 </span>
                               </button>
@@ -1075,19 +1158,19 @@ export default function ChatInterface() {
                                 <>
                                   <button
                                     onClick={() => handleEdit(msg.id)}
-                                    className="hover:text-orange-500 group relative"
+                                    className="relative hover:text-orange-500 group"
                                   >
                                     <Edit className="w-4 h-4" />
-                                    <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span className="absolute px-2 py-1 text-xs text-white transition-opacity transform -translate-x-1/2 bg-gray-800 rounded opacity-0 bottom-full left-1/2 group-hover:opacity-100">
                                       Edit
                                     </span>
                                   </button>
                                   <button
                                     onClick={() => handleDeleteClick(msg.id)}
-                                    className="hover:text-orange-500 group relative"
+                                    className="relative hover:text-orange-500 group"
                                   >
                                     <Trash className="w-4 h-4" />
-                                    <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span className="absolute px-2 py-1 text-xs text-white transition-opacity transform -translate-x-1/2 bg-gray-800 rounded opacity-0 bottom-full left-1/2 group-hover:opacity-100">
                                       Delete
                                     </span>
                                   </button>
@@ -1095,10 +1178,10 @@ export default function ChatInterface() {
                               )}
                               <button
                                 onClick={() => handlePin(msg.id)}
-                                className="hover:text-orange-500 group relative"
+                                className="relative hover:text-orange-500 group"
                               >
                                 <Pin className="w-4 h-4" />
-                                <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="absolute px-2 py-1 text-xs text-white transition-opacity transform -translate-x-1/2 bg-gray-800 rounded opacity-0 bottom-full left-1/2 group-hover:opacity-100">
                                   {msg.isPinned ? "Unpin" : "Pin"}
                                 </span>
                               </button>
@@ -1109,13 +1192,13 @@ export default function ChatInterface() {
                           <img
                             src="/placeholder.svg"
                             alt="You"
-                            className="w-8 h-8 rounded-full order-3"
+                            className="order-3 w-8 h-8 rounded-full"
                           />
                         )}
                       </motion.div>
                     ))
                 ) : (
-                  <div className="h-full flex items-center justify-center">
+                  <div className="flex items-center justify-center h-full">
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -1126,7 +1209,7 @@ export default function ChatInterface() {
                         alt="No messages"
                         className="w-64 h-64 mx-auto"
                       />
-                      <h3 className="text-xl font-semibold mt-4">
+                      <h3 className="mt-4 text-xl font-semibold">
                         No messages yet
                       </h3>
                       <p className="text-gray-500">
@@ -1141,7 +1224,7 @@ export default function ChatInterface() {
 
             {/* Reply Preview */}
             {replyingTo && (
-              <div className="bg-gray-100 p-2 flex items-center justify-between">
+              <div className="flex items-center justify-between p-2 bg-gray-100">
                 <p className="text-sm text-gray-600">
                   Replying to:{" "}
                   {activeMessages
@@ -1162,7 +1245,7 @@ export default function ChatInterface() {
             <motion.div
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              className="p-4 border-t bg-white relative"
+              className="relative p-4 bg-white border-t"
             >
               <div className="flex items-center gap-2">
                 <motion.input
@@ -1182,18 +1265,18 @@ export default function ChatInterface() {
                 />
                 <motion.button
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 hover:bg-gray-100 rounded-full"
+                  className="p-2 rounded-full hover:bg-gray-100"
                 >
                   <Paperclip className="w-5 h-5 text-gray-500" />
                 </motion.button>
                 <motion.button
                   onClick={() => videoInputRef.current?.click()}
-                  className="p-2 hover:bg-gray-100 rounded-full"
+                  className="p-2 rounded-full hover:bg-gray-100"
                 >
                   <Video className="w-5 h-5 text-gray-500" />
                 </motion.button>
 
-                <div className="flex-1 relative">
+                <div className="relative flex-1">
                   <input
                     type="text"
                     value={message}
@@ -1203,7 +1286,7 @@ export default function ChatInterface() {
                         ? "Edit message..."
                         : "Write Something..."
                     }
-                    className="w-full pl-4 pr-10 py-2 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full py-2 pl-4 pr-10 text-sm bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500"
                     onKeyPress={(e) =>
                       e.key === "Enter" &&
                       (editingMessageId
@@ -1213,7 +1296,7 @@ export default function ChatInterface() {
                   />
                   <motion.button
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className="absolute right-10 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full"
+                    className="absolute p-1 transform -translate-y-1/2 rounded-full right-10 top-1/2 hover:bg-gray-200"
                   >
                     <Smile className="w-5 h-5 text-gray-500" />
                   </motion.button>
@@ -1221,7 +1304,7 @@ export default function ChatInterface() {
                     onClick={
                       editingMessageId ? handleSaveEdit : handleSendMessage
                     }
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-orange-600 bg-orange-500 rounded-full text-white"
+                    className="absolute p-1 text-white transform -translate-y-1/2 bg-orange-500 rounded-full right-2 top-1/2 hover:bg-orange-600"
                   >
                     <SendIcon className="w-5 h-5" />
                   </motion.button>
@@ -1230,7 +1313,7 @@ export default function ChatInterface() {
 
               {/* Emoji Picker */}
               {showEmojiPicker && (
-                <div className="absolute bottom-full right-0 mb-2 bg-white border rounded-lg shadow-lg">
+                <div className="absolute right-0 mb-2 bg-white border rounded-lg shadow-lg bottom-full">
                   <EmojiPicker
                     onEmojiClick={(emojiObject) =>
                       handleEmojiSelect(emojiObject.emoji)
@@ -1242,7 +1325,7 @@ export default function ChatInterface() {
             </motion.div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex items-center justify-center flex-1">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1253,7 +1336,7 @@ export default function ChatInterface() {
                 alt="Select a chat"
                 className="w-64 h-64 mx-auto"
               />
-              <h3 className="text-xl font-semibold mt-4">No chat selected</h3>
+              <h3 className="mt-4 text-xl font-semibold">No chat selected</h3>
               <p className="text-gray-500">
                 Select a chat from the sidebar to start messaging
               </p>
@@ -1264,13 +1347,13 @@ export default function ChatInterface() {
 
       {/* Delete Dialog */}
       {deleteDialog.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <h3 className="text-lg font-semibold mb-4">Delete message?</h3>
-            <p className="text-sm text-gray-600 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="p-6 bg-white rounded-lg w-96">
+            <h3 className="mb-4 text-lg font-semibold">Delete message?</h3>
+            <p className="mb-4 text-sm text-gray-600">
               You can delete messages for everyone or just for yourself.
             </p>
-            <div className="space-y-2 mb-6">
+            <div className="mb-6 space-y-2">
               <label className="flex items-center">
                 <input
                   type="radio"
@@ -1314,18 +1397,18 @@ export default function ChatInterface() {
 
       {/* Enhanced Video Player */}
       {videoPlayer.isOpen && videoPlayer.videoUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 w-full max-w-4xl aspect-video relative">
-            <div className="absolute top-2 right-2 flex items-center gap-2 z-10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
+          <div className="relative w-full max-w-4xl p-4 bg-white rounded-lg aspect-video">
+            <div className="absolute z-10 flex items-center gap-2 top-2 right-2">
               <motion.button
                 onClick={() => handleSaveVideo(videoPlayer.videoUrl!)}
-                className="p-2 bg-gray-800 hover:bg-gray-700 rounded-full text-white"
+                className="p-2 text-white bg-gray-800 rounded-full hover:bg-gray-700"
               >
                 <Save className="w-5 h-5" />
               </motion.button>
               <motion.button
                 onClick={handleCloseVideoPlayer}
-                className="p-2 bg-gray-800 hover:bg-gray-700 rounded-full text-white"
+                className="p-2 text-white bg-gray-800 rounded-full hover:bg-gray-700"
               >
                 <X className="w-5 h-5" />
               </motion.button>
@@ -1334,16 +1417,16 @@ export default function ChatInterface() {
               <video
                 ref={videoRef}
                 src={videoPlayer.videoUrl}
-                className="w-full h-full rounded-lg object-contain"
+                className="object-contain w-full h-full rounded-lg"
                 onClick={handlePlayPause}
                 controls
               />
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black to-transparent">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handlePlayPause}
-                      className="p-2 bg-gray-800 hover:bg-gray-700 rounded-full text-white"
+                      className="p-2 text-white bg-gray-800 rounded-full hover:bg-gray-700"
                     >
                       {isPlaying ? (
                         <Pause className="w-5 h-5" />
@@ -1353,7 +1436,7 @@ export default function ChatInterface() {
                     </button>
                     <button
                       onClick={handleToggleMute}
-                      className="p-2 bg-gray-800 hover:bg-gray-700 rounded-full text-white"
+                      className="p-2 text-white bg-gray-800 rounded-full hover:bg-gray-700"
                     >
                       {isMuted ? (
                         <VolumeX className="w-5 h-5" />
@@ -1361,14 +1444,14 @@ export default function ChatInterface() {
                         <Volume2 className="w-5 h-5" />
                       )}
                     </button>
-                    <div className="text-white text-sm">
+                    <div className="text-sm text-white">
                       {formatTime(currentTime)} / {formatTime(duration)}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <motion.button
                       onClick={handleToggleFullscreen}
-                      className="p-2 bg-gray-800 hover:bg-gray-700 rounded-full text-white"
+                      className="p-2 text-white bg-gray-800 rounded-full hover:bg-gray-700"
                     >
                       <Maximize className="w-5 h-5" />
                     </motion.button>
@@ -1382,9 +1465,9 @@ export default function ChatInterface() {
 
       {/* Image Viewer */}
       {imageViewer.isOpen && imageViewer.images.length > 0 && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-4 w-full max-w-4xl aspect-video relative">
-            <div className="absolute top-2 right-2 flex items-center gap-2 z-10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
+          <div className="relative w-full max-w-4xl p-4 bg-white rounded-lg aspect-video">
+            <div className="absolute z-10 flex items-center gap-2 top-2 right-2">
               <motion.button
                 onClick={() =>
                   setImageViewer({
@@ -1393,35 +1476,35 @@ export default function ChatInterface() {
                     currentIndex: 0,
                   })
                 }
-                className="p-2 bg-gray-800 hover:bg-gray-700 rounded-full text-white"
+                className="p-2 text-white bg-gray-800 rounded-full hover:bg-gray-700"
               >
                 <X className="w-5 h-5" />
               </motion.button>
             </div>
             <div className="relative w-full h-full">
-              <div className="w-full h-full flex items-center justify-center">
+              <div className="flex items-center justify-center w-full h-full">
                 <img
                   src={imageViewer.images[imageViewer.currentIndex].url}
                   alt={imageViewer.images[imageViewer.currentIndex].name}
-                  className="max-w-full max-h-full object-contain"
+                  className="object-contain max-w-full max-h-full"
                 />
               </div>
               {imageViewer.images.length > 1 && (
                 <>
                   <motion.button
                     onClick={handlePrevImage}
-                    className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-gray-800 hover:bg-gray-700 rounded-full text-white"
+                    className="absolute p-2 text-white transform -translate-y-1/2 bg-gray-800 rounded-full left-4 top-1/2 hover:bg-gray-700"
                   >
                     <ChevronRight className="w-5 h-5 rotate-180" />
                   </motion.button>
                   <motion.button
                     onClick={handleNextImage}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 bg-gray-800 hover:bg-gray-700 rounded-full text-white"
+                    className="absolute p-2 text-white transform -translate-y-1/2 bg-gray-800 rounded-full right-4 top-1/2 hover:bg-gray-700"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </motion.button>
-                  <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-                    <div className="bg-gray-800 bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+                  <div className="absolute left-0 right-0 flex justify-center bottom-4">
+                    <div className="px-3 py-1 text-sm text-white bg-gray-800 bg-opacity-50 rounded-full">
                       {imageViewer.currentIndex + 1} /{" "}
                       {imageViewer.images.length}
                     </div>
@@ -1435,15 +1518,15 @@ export default function ChatInterface() {
 
       {/* Forward Dialog */}
       {forwardDialog.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <h3 className="text-lg font-semibold mb-4">Forward Message</h3>
-            <div className="max-h-96 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="p-6 bg-white rounded-lg w-96">
+            <h3 className="mb-4 text-lg font-semibold">Forward Message</h3>
+            <div className="overflow-y-auto max-h-96">
               {chats.map((chat) => (
                 <button
                   key={chat.id}
                   onClick={() => handleForwardMessage(chat.id)}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg"
+                  className="flex items-center w-full gap-3 p-3 rounded-lg hover:bg-gray-100"
                 >
                   <img
                     src={chat.avatar || "/placeholder.svg"}
@@ -1460,7 +1543,7 @@ export default function ChatInterface() {
                 </button>
               ))}
             </div>
-            <div className="mt-4 flex justify-end">
+            <div className="flex justify-end mt-4">
               <button
                 onClick={() =>
                   setForwardDialog({ isOpen: false, messageId: null })

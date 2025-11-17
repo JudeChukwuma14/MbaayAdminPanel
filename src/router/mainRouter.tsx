@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import Spinner from "../components/common/Spinner";
 import { createBrowserRouter, RouteObject } from "react-router-dom";
 import VendorLayout from "../components/VendorInfo/VendorLayout";
+import { useSelector } from "react-redux";
 
 const SignupAdmin = lazy(() => import("../components/auth/SignupAdmin"));
 const LoginAdmin = lazy(() => import("../components/auth/LoginAdmin"));
@@ -51,8 +52,6 @@ const Kyc = lazy(() => import("../components/VendorInfo/Verification/Kyc"));
 
 const AllUsers = lazy(() => import("../components/VendorInfo/AllUsers"));
 
-const AllVendors = lazy(() => import("../components/VendorInfo/AllVendors"));
-
 const Profile = lazy(
   () => import("../components/VendorInfo/Community&Res/Profile")
 );
@@ -62,7 +61,16 @@ const withSuspense = (Component: React.ComponentType) => (
     <Component />
   </Suspense>
 );
+const Role = () => {
+  const user = useSelector((state: any) => state.admin);
+  const role = user?.role;
 
+  return (
+    <div>
+      {role === "Customer care" ? withSuspense(Inbox) : withSuspense(Dashboard)}
+    </div>
+  );
+};
 const routesConfig: RouteObject[] = [
   { path: "/", element: withSuspense(SignupAdmin) },
   { path: "/login-admin", element: withSuspense(LoginAdmin) },
@@ -71,7 +79,10 @@ const routesConfig: RouteObject[] = [
     path: "/app",
     element: <VendorLayout />,
     children: [
-      { index: true, element: withSuspense(Dashboard) },
+      {
+        index: true,
+        element: <Role />,
+      },
       { path: "orders", element: withSuspense(AllOrder) },
       { path: "order-details", element: withSuspense(OrderDetails) },
       { path: "all-products", element: withSuspense(AllProduct) },
@@ -93,8 +104,7 @@ const routesConfig: RouteObject[] = [
       },
       { path: "reviews", element: withSuspense(Review) },
       { path: "general-setting", element: withSuspense(GeneralSetting) },
-      { path: "all-users", element: withSuspense(AllUsers) },
-      { path: "all-vendors", element: withSuspense(AllVendors) },
+      { path: "user-management", element: withSuspense(AllUsers) },
       { path: "profile", element: withSuspense(Profile) },
     ],
   },

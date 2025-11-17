@@ -11,26 +11,25 @@ import {
   XCircle,
 } from "lucide-react";
 import { VendorKYCModal } from "./KycDetail";
+import { QueryClient, useQuery } from "@tanstack/react-query";
+import { getAllKycRequests } from "../../../services/adminKycApi";
+import { useSelector } from "react-redux";
+import { RootState } from "../../redux/store";
+import { DocumentViewerModal } from "./DocumentViewerModal";
 
 interface Vendor {
-  id: string;
+  _id: string;
   businessName: string;
-  contactPerson: string;
   email: string;
-  phone: string;
-  registrationNumber: string;
-  taxId: string;
-  address: string;
-  businessType: string;
-  status: "pending" | "approved" | "rejected";
-  submissionDate: string;
-  documents: {
-    nationalId: string;
-    passport: string;
-    driversLicense: string;
-    residencePermit: string;
+  kycStatus: "Pending" | "Approved" | "Rejected";
+  kycSubmittedAt: string;
+  storeName: string;
+  kycDocuments: {
+    front: string;
+    back?: string;
+    documentType: string;
+    country: string;
   };
-  notes?: string;
 }
 
 // Inline Button component
@@ -170,87 +169,50 @@ const Input = React.forwardRef<
   );
 });
 
-// Mock data for vendors with updated document types
-const mockVendors: Vendor[] = [
-  {
-    id: "1",
-    businessName: "Tech Solutions Inc.",
-    contactPerson: "John Smith",
-    email: "john@techsolutions.com",
-    phone: "+1 234 567 8900",
-    registrationNumber: "REG123456",
-    taxId: "TAX789012",
-    address: "123 Business St, City, State 12345",
-    businessType: "Technology",
-    status: "pending",
-    submissionDate: "2024-01-15",
-    documents: {
-      nationalId: "national_id_john_smith.pdf",
-      passport: "passport_john_smith.pdf",
-      driversLicense: "drivers_license_john_smith.pdf",
-      residencePermit: "residence_permit_john_smith.pdf",
-    },
-  },
-  {
-    id: "2",
-    businessName: "Green Energy Corp",
-    contactPerson: "Sarah Johnson",
-    email: "sarah@greenenergy.com",
-    phone: "+1 234 567 8901",
-    registrationNumber: "REG654321",
-    taxId: "TAX210987",
-    address: "456 Energy Blvd, Green City, State 54321",
-    businessType: "Energy",
-    status: "approved",
-    submissionDate: "2024-01-10",
-    documents: {
-      nationalId: "national_id_sarah_johnson.pdf",
-      passport: "passport_sarah_johnson.pdf",
-      driversLicense: "drivers_license_sarah_johnson.pdf",
-      residencePermit: "residence_permit_sarah_johnson.pdf",
-    },
-  },
-  {
-    id: "3",
-    businessName: "Quick Delivery Services",
-    contactPerson: "Mike Wilson",
-    email: "mike@quickdelivery.com",
-    phone: "+1 234 567 8902",
-    registrationNumber: "REG987654",
-    taxId: "TAX456789",
-    address: "789 Logistics Ave, Transport City, State 67890",
-    businessType: "Logistics",
-    status: "rejected",
-    submissionDate: "2024-01-12",
-    documents: {
-      nationalId: "national_id_mike_wilson.pdf",
-      passport: "passport_mike_wilson.pdf",
-      driversLicense: "drivers_license_mike_wilson.pdf",
-      residencePermit: "residence_permit_mike_wilson.pdf",
-    },
-    notes: "Incomplete documentation - residence permit expired",
-  },
-];
+const Spinner = () => (
+  <div className="flex items-center justify-center py-10">
+    <div className="w-10 h-10 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+  </div>
+);
 
 const AdminKYC = () => {
   //   const navigate = useNavigate();
-  const [vendors, setVendors] = useState<Vendor[]>(mockVendors);
+  // const [vendors, setVendors] = useState<Vendor[]>(mockVendors);
+  const [viewDoc, setViewDoc] = useState<string | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<
-    "all" | "pending" | "approved" | "rejected"
+    "all" | "Pending" | "Approved" | "Rejected"
   >("all");
 
-  const filteredVendors = vendors.filter((vendor) => {
+  // Fetch KYC requests using React Query
+  const admin = useSelector((state: RootState) => state.admin);
+  console.log("Admin from state:", admin);
+  const queryClient = new QueryClient();
+
+  // inside useQuery
+  const { data: KYC, isLoading } = useQuery({
+    queryKey: ["kycRequests"],
+    queryFn: () => getAllKycRequests(admin?.token || null),
+    enabled: !!admin?.token, // only run if token exists
+  });
+  console.log("Fetched KYC Requests:", KYC);
+  const vendors: Vendor[] = KYC?.data.vendors || [];
+
+  const filteredVendors = (vendors || []).filter((vendor) => {
     const matchesSearch =
-      vendor.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vendor.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vendor.email.toLowerCase().includes(searchTerm.toLowerCase());
+      vendor.businessName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      vendor.email?.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesStatus =
-      statusFilter === "all" || vendor.status === statusFilter;
+      statusFilter === "all" ||
+      vendor.kycStatus?.toLowerCase() === statusFilter.toLowerCase();
+
     return matchesSearch && matchesStatus;
   });
+
+  console.log("Filtered Vendors:", filteredVendors);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -258,7 +220,7 @@ const AdminKYC = () => {
         return (
           <Badge
             variant="outline"
-            className="bg-yellow-50 text-yellow-700 border-yellow-200"
+            className="text-yellow-700 border-yellow-200 bg-yellow-50"
           >
             <Clock className="w-3 h-3 mr-1" />
             Pending
@@ -268,7 +230,7 @@ const AdminKYC = () => {
         return (
           <Badge
             variant="outline"
-            className="bg-green-50 text-green-700 border-green-200"
+            className="text-green-700 border-green-200 bg-green-50"
           >
             <CheckCircle className="w-3 h-3 mr-1" />
             Approved
@@ -278,7 +240,7 @@ const AdminKYC = () => {
         return (
           <Badge
             variant="outline"
-            className="bg-red-50 text-red-700 border-red-200"
+            className="text-red-700 border-red-200 bg-red-50"
           >
             <XCircle className="w-3 h-3 mr-1" />
             Rejected
@@ -294,24 +256,8 @@ const AdminKYC = () => {
     setIsModalOpen(true);
   };
 
-  const handleStatusUpdate = (
-    vendorId: string,
-    newStatus: "approved" | "rejected",
-    notes?: string
-  ) => {
-    setVendors((prevVendors) =>
-      prevVendors.map((vendor) =>
-        vendor.id === vendorId
-          ? { ...vendor, status: newStatus, notes }
-          : vendor
-      )
-    );
-    setIsModalOpen(false);
-    setSelectedVendor(null);
-  };
-
-  const getStatusCount = (status: "pending" | "approved" | "rejected") => {
-    return vendors.filter((vendor) => vendor.status === status).length;
+  const getStatusCount = (status: "Pending" | "Approved" | "Rejected") => {
+    return vendors.filter((vendor) => vendor.kycStatus === status).length;
   };
 
   return (
@@ -319,9 +265,9 @@ const AdminKYC = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gray-50 p-6"
+      className="min-h-screen p-6 bg-gray-50"
     >
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto max-w-7xl">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
@@ -331,7 +277,7 @@ const AdminKYC = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="mb-2 text-3xl font-bold text-gray-900">
                 Vendor KYC Management
               </h1>
               <p className="text-gray-600">
@@ -346,7 +292,7 @@ const AdminKYC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
+          className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-4"
         >
           <motion.div
             whileHover={{ scale: 1.02 }}
@@ -355,9 +301,9 @@ const AdminKYC = () => {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center">
-                  <Building className="h-8 w-8 text-blue-600" />
+                  <Building className="w-8 h-8 text-blue-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 mt-2">
+                    <p className="mt-2 text-sm font-medium text-gray-600">
                       Total Vendors
                     </p>
                     <p className="text-2xl font-bold text-gray-900">
@@ -376,13 +322,13 @@ const AdminKYC = () => {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center">
-                  <Clock className="h-8 w-8 text-yellow-600" />
+                  <Clock className="w-8 h-8 text-yellow-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 mt-2">
+                    <p className="mt-2 text-sm font-medium text-gray-600">
                       Pending Review
                     </p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {getStatusCount("pending")}
+                      {getStatusCount("Pending")}
                     </p>
                   </div>
                 </div>
@@ -397,13 +343,13 @@ const AdminKYC = () => {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
+                  <CheckCircle className="w-8 h-8 text-green-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 mt-2">
+                    <p className="mt-2 text-sm font-medium text-gray-600">
                       Approved
                     </p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {getStatusCount("approved")}
+                      {getStatusCount("Approved")}
                     </p>
                   </div>
                 </div>
@@ -418,13 +364,13 @@ const AdminKYC = () => {
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center">
-                  <XCircle className="h-8 w-8 text-red-600" />
+                  <XCircle className="w-8 h-8 text-red-600" />
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 mt-2">
+                    <p className="mt-2 text-sm font-medium text-gray-600">
                       Rejected
                     </p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {getStatusCount("rejected")}
+                      {getStatusCount("Rejected")}
                     </p>
                   </div>
                 </div>
@@ -441,10 +387,10 @@ const AdminKYC = () => {
         >
           <Card className="mb-6">
             <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex flex-col gap-4 md:flex-row">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Search className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
                     <Input
                       placeholder="Search vendors by name, contact person, or email..."
                       value={searchTerm}
@@ -462,26 +408,26 @@ const AdminKYC = () => {
                     All
                   </Button>
                   <Button
-                    variant={statusFilter === "pending" ? "default" : "outline"}
-                    onClick={() => setStatusFilter("pending")}
+                    variant={statusFilter === "Pending" ? "default" : "outline"}
+                    onClick={() => setStatusFilter("Pending")}
                     size="sm"
                   >
                     Pending
                   </Button>
                   <Button
                     variant={
-                      statusFilter === "approved" ? "default" : "outline"
+                      statusFilter === "Approved" ? "default" : "outline"
                     }
-                    onClick={() => setStatusFilter("approved")}
+                    onClick={() => setStatusFilter("Approved")}
                     size="sm"
                   >
                     Approved
                   </Button>
                   <Button
                     variant={
-                      statusFilter === "rejected" ? "default" : "outline"
+                      statusFilter === "Rejected" ? "default" : "outline"
                     }
-                    onClick={() => setStatusFilter("rejected")}
+                    onClick={() => setStatusFilter("Rejected")}
                     size="sm"
                   >
                     Rejected
@@ -501,71 +447,85 @@ const AdminKYC = () => {
           <Card>
             <CardHeader>
               <CardTitle>
-                Vendor Applications ({filteredVendors.length})
+                Vendor Applications ({isLoading ? "…" : filteredVendors.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <AnimatePresence>
-                  {filteredVendors.length === 0 ? (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="text-center py-8"
-                    >
-                      <User className="mx-auto h-12 w-12 text-gray-400" />
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">
-                        No vendors found
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Try adjusting your search or filters.
-                      </p>
-                    </motion.div>
-                  ) : (
-                    filteredVendors.map((vendor, index) => (
+              {isLoading ? (
+                <Spinner />
+              ) : (
+                <div className="space-y-4">
+                  <AnimatePresence>
+                    {filteredVendors.length === 0 ? (
                       <motion.div
-                        key={vendor.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.3, delay: index * 0.1 }}
-                        whileHover={{ scale: 1.01 }}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="py-8 text-center"
                       >
-                        <div className="flex-1">
+                        <User className="w-12 h-12 mx-auto text-gray-400" />
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">
+                          No vendors found
+                        </h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                          Try adjusting your search or filters.
+                        </p>
+                      </motion.div>
+                    ) : (
+                      filteredVendors.map((vendor, index) => (
+                        <motion.div
+                          key={vendor._id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          transition={{ duration: 0.3, delay: index * 0.1 }}
+                          whileHover={{ scale: 1.01 }}
+                          className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                        >
                           <div className="flex items-center gap-4">
-                            <div className="flex-1">
+                            {/* optional document thumbnail */}
+                            {vendor.kycDocuments?.front && (
+                              <img
+                                src={vendor.kycDocuments.front}
+                                alt="KYC"
+                                className="object-cover w-16 h-16 rounded-md"
+                                onClick={() =>
+                                  setViewDoc(vendor.kycDocuments.front)
+                                }
+                              />
+                            )}
+
+                            <div>
                               <h3 className="text-lg font-semibold text-gray-900">
                                 {vendor.businessName}
                               </h3>
                               <p className="text-sm text-gray-600">
-                                {vendor.contactPerson} • {vendor.email}
+                                {vendor.email}
                               </p>
                               <p className="text-sm text-gray-500">
-                                {vendor.businessType} • Submitted:{" "}
-                                {vendor.submissionDate}
+                                Submitted: {vendor.kycSubmittedAt}
                               </p>
                             </div>
-                            <div className="flex items-center gap-3">
-                              {getStatusBadge(vendor.status)}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleViewDetails(vendor)}
-                                className="flex items-center gap-2"
-                              >
-                                <Eye className="h-4 w-4" />
-                                View Details
-                              </Button>
-                            </div>
                           </div>
-                        </div>
-                      </motion.div>
-                    ))
-                  )}
-                </AnimatePresence>
-              </div>
+
+                          <div className="flex items-center gap-3">
+                            {getStatusBadge(vendor.kycStatus)}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewDetails(vendor)}
+                              className="flex items-center gap-2"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View Details
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -580,9 +540,19 @@ const AdminKYC = () => {
             setIsModalOpen(false);
             setSelectedVendor(null);
           }}
-          onStatusUpdate={handleStatusUpdate}
+          // onStatusUpdate={handleStatusUpdate}
+          onStatusUpdate={() => {
+            // simply invalidate the list so React-Query refetches
+            queryClient.invalidateQueries({ queryKey: ["kycRequests"] });
+          }}
         />
       )}
+      {/* Global viewer overlay */}
+      <DocumentViewerModal
+        imageUrl={viewDoc || ""}
+        isOpen={!!viewDoc}
+        onClose={() => setViewDoc(null)}
+      />
     </motion.div>
   );
 };

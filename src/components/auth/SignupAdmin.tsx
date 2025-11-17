@@ -40,7 +40,7 @@ const SignupAdmin: React.FC = () => {
     try {
       const response = await createAdmin(data);
       console.log("Register logs", response);
-      toast.success(response.message, {
+      toast.success(`${response?.data?.role} created successfully `, {
         position: "top-right",
         autoClose: 3000,
       });
@@ -100,7 +100,9 @@ const SignupAdmin: React.FC = () => {
                     {...register("email", {
                       required: "Email is required",
                       pattern: {
-                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, 
+
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+
                         message: "Invalid email address",
                       },
                     })}

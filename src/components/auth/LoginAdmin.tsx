@@ -12,6 +12,9 @@ import { setAdmin } from "../redux/slices/adminSlice";
 import { loginAdmin } from "../../services/adminApi";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
+import { jwtDecode } from "jwt-decode";
+
+
 const bg = {
   backgroundImage: `url(${background})`,
 };
@@ -36,10 +39,18 @@ const LoginAdmin = () => {
     setIsLoading(true);
     try {
       const response = await loginAdmin(data);
+      console.log(response);
+      const token = response?.data?.token;
+      const decoded: any = jwtDecode(token);
+      console.log(decoded);
 
-      if (response?.data?.user && response?.data?.token) {
+      if (response?.data?.user && response?.data?.token && decoded) {
         dispatch(
-          setAdmin({ admin: response.data.user, token: response.data.token })
+          setAdmin({
+            admin: response.data.user,
+            token: response.data.token,
+            role: decoded?.role,
+          })
         );
         toast.success(response.message || "Login successful");
         navigate("/app");
@@ -107,7 +118,9 @@ const LoginAdmin = () => {
                     {...register("emailOrPhone", {
                       required: "Email or phone is required",
                     })}
-                   className="w-full p-3 mt-1 transition border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+
+                    className="w-full p-3 mt-1 transition border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+
                     placeholder="Enter email or phone"
                   />
                   <p className="text-red-500 text-[10px]">
