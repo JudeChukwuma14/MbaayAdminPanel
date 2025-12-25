@@ -11,7 +11,9 @@ import { Logo } from "../../assets/image";
 import { setAdmin } from "../redux/slices/adminSlice";
 import { loginAdmin } from "../../services/adminApi";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+
 import { jwtDecode } from "jwt-decode";
+
 
 const bg = {
   backgroundImage: `url(${background})`,
@@ -116,7 +118,9 @@ const LoginAdmin = () => {
                     {...register("emailOrPhone", {
                       required: "Email or phone is required",
                     })}
+
                     className="w-full p-3 mt-1 transition border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+
                     placeholder="Enter email or phone"
                   />
                   <p className="text-red-500 text-[10px]">
