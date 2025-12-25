@@ -3,6 +3,7 @@ import Spinner from "../components/common/Spinner";
 import { createBrowserRouter, RouteObject } from "react-router-dom";
 import VendorLayout from "../components/VendorInfo/VendorLayout";
 import { useSelector } from "react-redux";
+import ProtectedRoute from "./protectRoute";
 
 const SignupAdmin = lazy(() => import("../components/auth/SignupAdmin"));
 const LoginAdmin = lazy(() => import("../components/auth/LoginAdmin"));
@@ -33,6 +34,9 @@ const EditVendorProfile = lazy(
 const Inbox = lazy(() => import("../components/VendorInfo/Inbox"));
 const AllPost = lazy(
   () => import("../components/VendorInfo/Community&Res/AllPost")
+);
+const MbaayCommunity = lazy(
+  () => import("../components/VendorInfo/Community&Res/MbaayCommunity")
 );
 const Requests = lazy(
   () => import("../components/VendorInfo/Verification/Requests")
@@ -72,42 +76,50 @@ const Role = () => {
   );
 };
 const routesConfig: RouteObject[] = [
-  { path: "/", element: withSuspense(SignupAdmin) },
-  { path: "/login-admin", element: withSuspense(LoginAdmin) },
-
   {
-    path: "/app",
-    element: <VendorLayout />,
+    path: "/",
+    element: <ProtectedRoute />,
     children: [
       {
-        index: true,
-        element: <Role />,
+        element: <VendorLayout />,
+        children: [
+          {
+            index: true,
+            element: <Role />,
+          },
+          { path: "orders", element: withSuspense(AllOrder) },
+          { path: "order-details", element: withSuspense(OrderDetails) },
+          { path: "all-products", element: withSuspense(AllProduct) },
+          { path: "new-product", element: withSuspense(NewProduct) },
+          { path: "customers", element: withSuspense(Customer) },
+          { path: "Payments", element: withSuspense(Payments) },
+          { path: "preview-invoice", element: withSuspense(PreviewInvoice) },
+          {
+            path: "edit-vendor-profile",
+            element: withSuspense(EditVendorProfile),
+          },
+          {
+            path: "kyc",
+            element: withSuspense(() => <Kyc />),
+          },
+          { path: "inbox", element: withSuspense(Inbox) },
+          { path: "all-post", element: withSuspense(AllPost) },
+          { path: "mbaay-community", element: withSuspense(MbaayCommunity) },
+          { path: "requests", element: withSuspense(Requests) },
+          {
+            path: "requests/request-detail/:id",
+            element: withSuspense(RequestDetail),
+          },
+          { path: "reviews", element: withSuspense(Review) },
+          { path: "general-setting", element: withSuspense(GeneralSetting) },
+          { path: "user-management", element: withSuspense(AllUsers) },
+          { path: "profile", element: withSuspense(Profile) },
+        ],
       },
-      { path: "orders", element: withSuspense(AllOrder) },
-      { path: "order-details", element: withSuspense(OrderDetails) },
-      { path: "all-products", element: withSuspense(AllProduct) },
-      { path: "new-product", element: withSuspense(NewProduct) },
-      { path: "customers", element: withSuspense(Customer) },
-      { path: "Payments", element: withSuspense(Payments) },
-      { path: "preview-invoice", element: withSuspense(PreviewInvoice) },
-      { path: "edit-vendor-profile", element: withSuspense(EditVendorProfile) },
-      {
-        path: "kyc",
-        element: withSuspense(() => <Kyc />),
-      },
-      { path: "inbox", element: withSuspense(Inbox) },
-      { path: "all-post", element: withSuspense(AllPost) },
-      { path: "requests", element: withSuspense(Requests) },
-      {
-        path: "requests/request-detail/:id",
-        element: withSuspense(RequestDetail),
-      },
-      { path: "reviews", element: withSuspense(Review) },
-      { path: "general-setting", element: withSuspense(GeneralSetting) },
-      { path: "user-management", element: withSuspense(AllUsers) },
-      { path: "profile", element: withSuspense(Profile) },
     ],
   },
+  { path: "/signup-admin", element: withSuspense(SignupAdmin) },
+  { path: "/login-admin", element: withSuspense(LoginAdmin) },
 ];
 
 export const mainRouter = createBrowserRouter(routesConfig);

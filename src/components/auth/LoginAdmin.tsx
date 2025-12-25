@@ -51,7 +51,7 @@ const LoginAdmin = () => {
           })
         );
         toast.success(response.message || "Login successful");
-        navigate("/app");
+        navigate("/");
       } else {
         throw new Error("Invalid response format from server");
       }

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Building, FileText, Eye, CheckCircle, XCircle, X } from "lucide-react";
-import { approveKyc, rejectKyc } from "../../../services/adminKycApi";
+import { approveKyc, rejectKyc } from "../../../services/adminApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { VendorKYCModal } from "./KycDetail";
 import { QueryClient, useQuery } from "@tanstack/react-query";
-import { getAllKycRequests } from "../../../services/adminKycApi";
+import { getAllKycRequests } from "../../../services/adminApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
 import { DocumentViewerModal } from "./DocumentViewerModal";

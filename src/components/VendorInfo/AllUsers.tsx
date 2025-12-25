@@ -1,13 +1,12 @@
-import type React from "react";
 import { useState } from "react";
 import {
   Search,
   Users,
   Building2,
-  Plus,
   Filter,
   Eye,
   Loader2,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,45 +29,9 @@ import {
 } from "@/components/ui/select";
 import { AllUserDetailed } from "./AllUserDetailed";
 import { useQuery } from "@tanstack/react-query";
-import { getAllUsers, getAllVendor } from "@/services/user_vendorApi";
-
-/* ------------------------------------------------------------------ */
-/* Mock data – replace with real API call when ready                  */
-/* ------------------------------------------------------------------ */
-const mockUsers = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john@example.com",
-    role: "Admin",
-    status: "Active",
-    joinDate: "2024-01-15",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane@example.com",
-    role: "User",
-    status: "Active",
-    joinDate: "2024-02-20",
-  },
-  {
-    id: 3,
-    name: "Mike Johnson",
-    email: "mike@example.com",
-    role: "User",
-    status: "Inactive",
-    joinDate: "2024-01-10",
-  },
-  {
-    id: 4,
-    name: "Sarah Wilson",
-    email: "sarah@example.com",
-    role: "Moderator",
-    status: "Active",
-    joinDate: "2024-03-05",
-  },
-];
+import { getAllAdmins, getAllUsers, getAllVendor } from "@/services/adminApi";
+import { useSelector } from "react-redux";
+import { RootState } from "../redux/store";
 
 /* -------------------------------------------------------------- */
 /*   Small helper to render a centered spinner row              */
@@ -86,14 +49,17 @@ const SpinnerRow = ({ colSpan }: { colSpan: number }) => (
 /* Component                                                          */
 /* ------------------------------------------------------------------ */
 const AllUsers = () => {
-  const [activeTab, setActiveTab] = useState<"users" | "vendors">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "vendors" | "admins">(
+    "users"
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedDetail, setSelectedDetail] = useState<{
-    type: "user" | "vendor";
+    type: "user" | "vendor" | "admin";
     id: string | null;
   } | null>(null);
-  console.log(selectedDetail);
+  const admin = useSelector((state: RootState) => state.admin);
+  const isAdminSuperAdmin = admin?.role === "Super Admin";
 
   /* -------------------------------------------------------------- */
   /* Vendor query                                                   */
@@ -102,7 +68,7 @@ const AllUsers = () => {
     queryKey: ["vendors"],
     queryFn: async () => {
       try {
-        const data = await getAllVendor();
+        const data = await getAllVendor(admin.token);
         console.log(data);
         return Array.isArray(data) ? data : [];
       } catch (err) {
@@ -118,10 +84,34 @@ const AllUsers = () => {
   /* -------------------------------------------------------------- */
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["users"],
-    queryFn: getAllUsers, // real endpoint
+    queryFn: async () => {
+      try {
+        const data = await getAllUsers(admin.token);
+        console.log(data);
+        return Array.isArray(data) ? data : [];
+      } catch (err) {
+        console.error("Error fetching user:", err);
+        return [];
+      }
+    },
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: admins = [], isLoading: adminLoading } = useQuery({
+    queryKey: ["admins"],
+    queryFn: async () => {
+      try {
+        const data = await getAllAdmins(admin.token);
+        console.log(data);
+        return Array.isArray(data) ? data : [];
+      } catch (err) {
+        console.error("Error fetching user:", err);
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+  console.log("Admin", admins);
   /* -------------------------------------------------------------- */
   /* Filter helpers                                                 */
   /* -------------------------------------------------------------- */
@@ -174,15 +164,17 @@ const AllUsers = () => {
     }
   };
 
-  const handleViewDetail = (type: "user" | "vendor", id: string | null) =>
-    setSelectedDetail({ type, id });
+  const handleViewDetail = (
+    type: "user" | "vendor" | "admin",
+    id: string | null
+  ) => setSelectedDetail({ type, id });
 
   const handleBackToMain = () => setSelectedDetail(null);
 
   /* -------------------------------------------------------------- */
   /* Tab switch – reset filter                                      */
   /* -------------------------------------------------------------- */
-  const switchTab = (tab: "users" | "vendors") => {
+  const switchTab = (tab: "users" | "vendors" | "admins") => {
     setActiveTab(tab);
     setStatusFilter("all");
   };
@@ -240,6 +232,16 @@ const AllUsers = () => {
             <Building2 className="w-4 h-4" />
             Vendors
           </Button>
+          {isAdminSuperAdmin && (
+            <Button
+              variant={activeTab === "admins" ? "default" : "outline"}
+              onClick={() => switchTab("admins")}
+              className="flex items-center gap-2"
+            >
+              <Shield className="w-4 h-4" />
+              Admins
+            </Button>
+          )}
         </div>
 
         {/* Users table ----------------------------------------------- */}
@@ -396,7 +398,7 @@ const AllUsers = () => {
                     </TableRow>
                   ) : (
                     filteredVendors.map((v) => (
-                      <TableRow key={v.id}>
+                      <TableRow key={v._id}>
                         <TableCell className="font-medium">
                           {v.storeName}
                         </TableCell>
@@ -483,6 +485,93 @@ const AllUsers = () => {
                       </TableRow>
                     ))
                   )} */}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Admins table ---------------------------------------------- */}
+        {activeTab === "admins" && isAdminSuperAdmin && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="w-5 h-5" />
+                  Admins Management
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-muted-foreground" />
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Join Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {adminLoading ? (
+                    <SpinnerRow colSpan={6} />
+                  ) : admins.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-12 text-center">
+                        <Shield className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                        <h3 className="text-lg font-semibold">
+                          No Admins Found
+                        </h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          No admin accounts are available.
+                        </p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    admins.map((a: any) => (
+                      <TableRow key={a._id}>
+                        <TableCell className="font-medium">{a.name}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {a.email}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{a.role}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusBadgeVariant(a.status)}>
+                            {a.status || "Active"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatDate(a.createdAt)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewDetail("admin", a._id)}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>

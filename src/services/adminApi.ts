@@ -5,6 +5,12 @@ export const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
+const API_BASE_URL_COM = "https://ilosiwaju-mbaay-2025.com/api/v1/community";
+
+export const com = axios.create({
+  baseURL: API_BASE_URL_COM,
+});
+
 export const createAdmin = async (userData: any) => {
   try {
     const response = await api.post("/create_admin", userData);
@@ -79,5 +85,360 @@ export const validate_reject_vendor = async (
     throw new Error(
       error.response?.data?.message || "Failed to process request"
     );
+  }
+};
+
+export const getAllVendor = async (token: string | null) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get("/vendors/all", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      "Fetch Vendor Requests Error:",
+      error.response?.data || error
+    );
+    throw error;
+  }
+};
+export const getAllUsers = async (token: string | null) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get("/users/all", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Fetch User Requests Error:", error.response?.data || error);
+    throw error;
+  }
+};
+
+export const getAllAdmins = async (token: string | null) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get("/admins/all", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Fetch Admin Requests Error:", error.response?.data || error);
+    throw error;
+  }
+};
+
+export const getUserById = async (id: string | null) => {
+  try {
+    const response = await api.get(`/one_user/${id}`);
+
+    return response.data.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+export const getVendorById = async (id: string | null) => {
+  try {
+    const response = await api.get(`/one_vendor/${id}`);
+
+    return response.data.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const getAllKycRequests = async (token: string | null) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get("/view_all_kyc_requests", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response;
+  } catch (error: any) {
+    console.error("Fetch KYC Requests Error:", error.response?.data || error);
+    throw error;
+  }
+};
+
+export const approveKyc = async (token: string | null, vendorId: string) => {
+  try {
+    const response = await api.patch(
+      `/approve_kyc/${vendorId}`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response;
+  } catch (error) {
+    console.error("Approve KYC Error:", error);
+    throw error;
+  }
+};
+
+export const rejectKyc = async (token: string | null, vendorId: string) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.patch(
+      `/reject_kyc/${vendorId}`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response;
+  } catch (error) {
+    console.error("Reject KYC Error:", error);
+    throw error;
+  }
+};
+
+export const getAllOrders = async (token: string | null) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get("/orders/all", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Fetch Orders Error:", error.response?.data || error);
+    throw error;
+  }
+};
+
+export const BlockUnblockDeleteUser = async (
+  userId: string,
+  userType: "user" | "vendor" | "admin",
+  action: "block" | "unblock" | "delete",
+  token: string | null
+) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.post(
+      "/user/action",
+      {
+        userId,
+        userType,
+        action,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Block/Unblock/Delete Error:", error.response?.data || error);
+    throw error;
+  }
+};
+
+export const sendPrivateMessage = async (
+  recipientId: string,
+  recipientType: "user" | "vendor",
+  title: string,
+  message: string,
+  token: string | null
+) => {
+  if (!token) {
+    throw new Error("No token provided");
+  }
+
+  try {
+    const response = await api.post(
+      "/private-message",
+      {
+        recipientId,
+        recipientType,
+        title,
+        message,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Send Private Message Error:", error.response?.data || error);
+    throw error;
+  }
+};
+
+export const getAllReviews = async (token: string | null) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+    const response = await api.get("/reviews/all", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    console.log("Reviews Response:", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error("Fetch Reviews Error:", error.response?.data || error);
+    throw error;
+  }
+};
+
+export const getAllCustomer_PaymentStats = async (token: string | null) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get("/customers/payments", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error(
+      "Fetch Customers Payment Stats Error:",
+      error.response?.data || error
+    );
+    throw error;
+  }
+};
+
+export const broadcastMessage = async (
+  title: string,
+  message: string,
+  targetUsers: "all" | "users" | "vendors" | "admins",
+  token: string | null
+) => {
+  if (!token) {
+    throw new Error("No token provided");
+  }
+
+  try {
+    const response = await api.post(
+      "/broadcast",
+      {
+        title,
+        message,
+        targetUsers,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error("Broadcast Error:", error.response?.data || error);
+    throw error;
+  }
+};
+
+export const getAllCommunitysPosts = async (token: string | null) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get("/community/posts/all", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error(
+      "Fetch Communitys Posts Error:",
+      error.response?.data || error
+    );
+    throw error;
+  }
+};
+
+export const getMbaayCommunity = async (token: string | null) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get("/community/mbaay", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error(
+      "Fetch Mbaay Community Error:",
+      error.response?.data || error
+    );
+    throw error;
+  }
+};
+
+export const get_communities = async () => {
+  try {
+    const response = await com.get(`/all_communities`);
+    return response.data.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const createPost = async (data: any, token: string | null) => {
+  try {
+    const response = await api.post("/community/post", data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    console.log(response);
+    return response;
+  } catch (error) {
+    console.log(error);
   }
 };
