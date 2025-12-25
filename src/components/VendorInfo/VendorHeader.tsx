@@ -1,12 +1,61 @@
 import React, { useState } from "react";
-import { Sun, Moon, Bell, Search, X } from "lucide-react";
+import {
+  // Sun,
+  // Moon,
+  Bell,
+  // Search,
+  X,
+  MessageSquare,
+  Loader2,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSelector } from "react-redux";
 import { useDarkMode } from "../context/DarkModeContext";
+import { useMutation } from "@tanstack/react-query";
+import { broadcastMessage } from "@/services/adminApi";
+import { toast } from "react-toastify";
 
 const VendorHeader: React.FC = () => {
-  const { darkMode, toggleDarkMode } = useDarkMode();
+  const { darkMode } = useDarkMode();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showBroadcast, setShowBroadcast] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastBody, setBroadcastBody] = useState("");
+  const [broadcastTarget, setBroadcastTarget] = useState<
+    "all" | "users" | "vendors" | "admins"
+  >("all");
+
+  const mutation = useMutation({
+    mutationFn: ({
+      title,
+      message,
+      target,
+    }: {
+      title: string;
+      message: string;
+      target: string;
+    }) => broadcastMessage(title, message, target as any, user?.token),
+    onSuccess: () => {
+      toast.success("Message broadcast successful", { position: "top-right" });
+      setShowBroadcast(false);
+      setBroadcastTitle("");
+      setBroadcastBody("");
+      setBroadcastTarget("all");
+    },
+    onError: (err: any) => {
+      console.error("Broadcast error:", err);
+      toast.error("Failed to broadcast message", { position: "top-right" });
+    },
+  });
+
+  const handleBroadcast = () => {
+    if (!broadcastTitle.trim() || !broadcastBody.trim()) return;
+    mutation.mutate({
+      title: broadcastTitle,
+      message: broadcastBody,
+      target: broadcastTarget,
+    });
+  };
 
   const user = useSelector((state: any) => state.admin);
 
@@ -75,7 +124,7 @@ const VendorHeader: React.FC = () => {
       </h1>
       <div className="flex items-center gap-4">
         {/* Light/Dark Mode Button */}
-        <button
+        {/* <button
           onClick={toggleDarkMode}
           aria-label="Toggle Dark Mode"
           className="mb-2"
@@ -85,7 +134,103 @@ const VendorHeader: React.FC = () => {
           ) : (
             <Moon className="text-gray-500 text-[30px]" />
           )}
-        </button>
+        </button> */}
+
+        {/* Broadcast button */}
+        <div>
+          <button
+            onClick={() => setShowBroadcast(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-orange-500 text-white rounded"
+          >
+            <MessageSquare className="w-4 h-4" />
+            Broadcast
+          </button>
+
+          <AnimatePresence>
+            {showBroadcast && (
+              <motion.div
+                className={`fixed inset-0 z-50 flex items-center justify-center`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <div
+                  className="absolute inset-0 bg-black/40 z-40"
+                  onClick={() => setShowBroadcast(false)}
+                />
+                <motion.div
+                  className={`w-full max-w-lg p-6 z-50 bg-white rounded-lg shadow-lg`}
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">Broadcast Message</h3>
+                    <button onClick={() => setShowBroadcast(false)}>
+                      <X />
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    <label className="block text-sm">Title</label>
+                    <input
+                      value={broadcastTitle}
+                      onChange={(e) => setBroadcastTitle(e.target.value)}
+                      className="w-full border p-2 rounded"
+                      placeholder="Enter title"
+                    />
+
+                    <label className="block text-sm">Message</label>
+                    <textarea
+                      value={broadcastBody}
+                      onChange={(e) => setBroadcastBody(e.target.value)}
+                      className="w-full border p-2 rounded min-h-[100px]"
+                      placeholder="Type message to broadcast"
+                    />
+
+                    <label className="block text-sm">Target</label>
+                    <select
+                      value={broadcastTarget}
+                      onChange={(e) =>
+                        setBroadcastTarget(e.target.value as any)
+                      }
+                      className="w-full border p-2 rounded"
+                    >
+                      <option value="all">All</option>
+                      <option value="users">Users</option>
+                      <option value="vendors">Vendors</option>
+                      <option value="admins">Admins</option>
+                    </select>
+
+                    <div className="flex justify-end gap-2 mt-4">
+                      <button
+                        className="px-4 py-2 rounded border"
+                        onClick={() => setShowBroadcast(false)}
+                        disabled={mutation.isPending}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="px-4 py-2 rounded bg-orange-500 text-white flex items-center gap-2"
+                        onClick={() => handleBroadcast()}
+                        disabled={
+                          mutation.isPending ||
+                          !broadcastTitle.trim() ||
+                          !broadcastBody.trim()
+                        }
+                      >
+                        {mutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          "Send"
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Notifications */}
         <div className="relative">
@@ -175,6 +320,7 @@ const VendorHeader: React.FC = () => {
             )}
           </AnimatePresence>
         </div>
+
         <div className="flex flex-col items-center justify-center">
           <span className="flex items-center justify-center w-12 h-12 font-bold bg-orange-500 rounded-full text-[20px] text-white">
             {user?.admin?.name?.charAt(0)?.toUpperCase()}

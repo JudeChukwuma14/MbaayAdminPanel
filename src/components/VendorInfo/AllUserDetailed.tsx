@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import {
   ArrowLeft,
@@ -9,7 +7,6 @@ import {
   Building2,
   User,
   Phone,
-  MessageSquare,
   Ban,
   CheckCircle,
   Trash2,
@@ -26,11 +23,19 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useQuery } from "@tanstack/react-query";
-import { getUserById, getVendorById } from "@/services/user_vendorApi";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  getUserById,
+  getVendorById,
+  BlockUnblockDeleteUser,
+  sendPrivateMessage,
+} from "@/services/adminApi";
+import { useSelector } from "react-redux";
+import { RootState } from "../redux/store";
+import { toast, ToastContainer } from "react-toastify";
 
 interface UserVendorDetailProps {
-  type: "user" | "vendor";
+  type: "user" | "vendor" | "admin";
   id: string | null;
   onBack: () => void;
 }
@@ -40,10 +45,11 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
   /* local state                                                */
   /* ---------------------------------------------------------- */
   const [adminNotes, setAdminNotes] = useState("");
-  const [isBlocked, setIsBlocked] = useState(false);
+  // const [isBlocked, setIsBlocked] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [messageText, setMessageText] = useState("");
+  const [messageTitle, setMessageTitle] = useState("");
 
   /* ---------------------------------------------------------- */
   /* single query – endpoint returns user OR vendor object      */
@@ -54,17 +60,112 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
     enabled: type === "user" && !!id,
     staleTime: 1000 * 60 * 5,
   });
-
+  console.log("UserData", userQuery.data);
   const vendorQuery = useQuery({
     queryKey: ["vendor", id],
     queryFn: () => getVendorById(id),
     enabled: type === "vendor" && !!id,
     staleTime: 1000 * 60 * 5,
   });
+  // const adminQuery = useQuery({
+  //   queryKey: ["admin", id],
+  //   queryFn: () => getVendorById(id),
+  //   enabled: type === "admin" && !!id,
+  //   staleTime: 1000 * 60 * 5,
+  // });
+  console.log("VendorData", vendorQuery.data);
   const data = type === "user" ? userQuery.data : vendorQuery.data;
   const isLoading =
     type === "user" ? userQuery.isLoading : vendorQuery.isLoading;
   const error = type === "user" ? userQuery.error : vendorQuery.error;
+
+  const isBlocked = data?.isBlocked;
+  // Handle both boolean and string values for isBlocked
+  const isBlockedStatus =
+    typeof isBlocked === "boolean"
+      ? isBlocked
+      : typeof isBlocked === "string"
+      ? isBlocked.toLowerCase() === "true"
+      : false;
+  console.log("isBlock", isBlocked, "isBlockedStatus", isBlockedStatus);
+
+  /* ---------------------------------------------------------- */
+  /* admin state                                                */
+  /* ---------------------------------------------------------- */
+  const admin = useSelector((state: RootState) => state.admin);
+
+  /* ---------------------------------------------------------- */
+  /* mutation for block/unblock/delete                          */
+  /* ---------------------------------------------------------- */
+  const queryClient = useQueryClient();
+  const blockUnblockDeleteMutation = useMutation({
+    mutationFn: ({
+      userId,
+      userType,
+      action,
+    }: {
+      userId: string;
+      userType: "user" | "vendor" | "admin";
+      action: "block" | "unblock" | "delete";
+    }) => BlockUnblockDeleteUser(userId, userType, action, admin.token),
+    onSuccess: (data, variables) => {
+      console.log(
+        `${variables.action} ${variables.userType} successful:`,
+        data
+      );
+      // Invalidate relevant queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ["user", id] });
+      queryClient.invalidateQueries({ queryKey: ["vendor", id] });
+      queryClient.invalidateQueries({ queryKey: ["admin", id] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["admins"] });
+    },
+    onError: (error, variables) => {
+      console.error(
+        `Error ${variables.action}ing ${variables.userType}:`,
+        error
+      );
+    },
+  });
+
+  /* ---------------------------------------------------------- */
+  /* mutation for sending private messages                      */
+  /* ---------------------------------------------------------- */
+  const sendPrivateMessageMutation = useMutation({
+    mutationFn: ({
+      recipientId,
+      recipientType,
+      title,
+      message,
+    }: {
+      recipientId: string;
+      recipientType: "user" | "vendor";
+      title: string;
+      message: string;
+    }) =>
+      sendPrivateMessage(
+        recipientId,
+        recipientType,
+        title,
+        message,
+        admin.token
+      ),
+    onSuccess: (data) => {
+      console.log("Private message sent successfully:", data);
+      toast.success("Message sent successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    },
+    onError: (error) => {
+      console.error("Send private message error:", error);
+      toast.error("Failed to send message. Please try again.", {
+        position: "top-right",
+        autoClose: 5000,
+      });
+    },
+  });
   /* ---------------------------------------------------------- */
   /* early states                                               */
   /* ---------------------------------------------------------- */
@@ -124,18 +225,39 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
   /* ---------------------------------------------------------- */
   const handleBlockToggle = () => setShowBlockModal(true);
   const confirmBlock = () => {
-    setIsBlocked((b) => !b);
+    if (!id) return;
+    const action = isBlockedStatus ? "unblock" : "block";
+    blockUnblockDeleteMutation.mutate({
+      userId: id,
+      userType: type,
+      action: action,
+    });
     setShowBlockModal(false);
   };
   const handleDelete = () => {
-    console.log(`Deleting ${type} with ID: ${id}`);
+    if (!id) return;
+    blockUnblockDeleteMutation.mutate({
+      userId: id,
+      userType: type,
+      action: "delete",
+    });
     onBack();
   };
   const sendMessage = () => {
-    if (!messageText.trim()) return;
-    console.log(`Message to ${type} ${id}: ${messageText}`);
+    if (!messageText.trim() || !messageTitle.trim()) return;
+    sendPrivateMessageMutation.mutate({
+      recipientId: id!,
+      recipientType: type === "user" ? "user" : "vendor",
+      title: messageTitle,
+      message: messageText,
+    });
     setMessageText("");
+    setMessageTitle("");
     setShowMessageModal(false);
+  };
+  const handleSaveNote = () => {
+    // TODO: Implement save note functionality
+    console.log("Saving note:", adminNotes);
   };
 
   /* ---------------------------------------------------------- */
@@ -209,7 +331,7 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                     variant={statusInfo.variant as any}
                     className="text-sm"
                   >
-                    {isBlocked ? "Blocked" : statusInfo.label}
+                    {isBlockedStatus ? "Blocked" : statusInfo.label}
                   </Badge>
                 </div>
               </CardHeader>
@@ -374,11 +496,17 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button
-                  variant={isBlocked ? "default" : "destructive"}
+                  variant={isBlockedStatus ? "default" : "destructive"}
                   className="flex items-center w-full gap-2"
                   onClick={handleBlockToggle}
+                  disabled={blockUnblockDeleteMutation.isPending}
                 >
-                  {isBlocked ? (
+                  {blockUnblockDeleteMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {isBlockedStatus ? "Unblocking..." : "Blocking..."}
+                    </>
+                  ) : isBlockedStatus ? (
                     <>
                       <CheckCircle className="w-4 h-4" />
                       Unblock {type === "user" ? "User" : "Vendor"}
@@ -395,26 +523,29 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                   variant="outline"
                   className="flex items-center w-full gap-2 bg-transparent"
                   onClick={() => setShowMessageModal(true)}
+                  disabled={blockUnblockDeleteMutation.isPending}
                 >
                   <Mail className="w-4 h-4" />
-                  Send Message
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="flex items-center w-full gap-2 bg-transparent"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  View Messages
+                  Send Private Message
                 </Button>
 
                 <Button
                   variant="destructive"
                   className="flex items-center w-full gap-2"
                   onClick={handleDelete}
+                  disabled={blockUnblockDeleteMutation.isPending}
                 >
-                  <Trash2 className="w-4 h-4" />
-                  Delete {type === "user" ? "User" : "Vendor"}
+                  {blockUnblockDeleteMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Delete {type === "user" ? "User" : "Vendor"}
+                    </>
+                  )}
                 </Button>
               </CardContent>
             </Card>
@@ -443,7 +574,20 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                     className="mt-2"
                   />
                 </div>
-                <Button className="w-full">Save Note</Button>
+                <Button
+                  className="w-full"
+                  onClick={handleSaveNote}
+                  disabled={blockUnblockDeleteMutation.isPending}
+                >
+                  {blockUnblockDeleteMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Note"
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -467,6 +611,16 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
             </div>
             <div className="space-y-4">
               <div>
+                <Label htmlFor="message-title">Message Title</Label>
+                <Textarea
+                  id="message-title"
+                  placeholder="Enter message title..."
+                  value={messageTitle}
+                  onChange={(e) => setMessageTitle(e.target.value)}
+                  className="mt-2 min-h-[40px]"
+                />
+              </div>
+              <div>
                 <Label htmlFor="message">Message to {getDisplayName()}</Label>
                 <Textarea
                   id="message"
@@ -485,11 +639,25 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                 </Button>
                 <Button
                   onClick={sendMessage}
-                  disabled={!messageText.trim()}
+                  disabled={
+                    !messageText.trim() ||
+                    !messageTitle.trim() ||
+                    blockUnblockDeleteMutation.isPending ||
+                    sendPrivateMessageMutation.isPending
+                  }
                   className="flex items-center gap-2"
                 >
-                  <Send className="w-4 h-4" />
-                  Send
+                  {sendPrivateMessageMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Send
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -503,7 +671,7 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
           <div className="w-full max-w-md p-6 mx-4 border rounded-lg bg-card border-border">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">
-                {isBlocked ? "Unblock" : "Block"}{" "}
+                {isBlockedStatus ? "Unblock" : "Block"}{" "}
                 {type === "user" ? "User" : "Vendor"}
               </h3>
               <Button
@@ -517,24 +685,31 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
             </div>
             <div className="space-y-4">
               <p className="text-muted-foreground">
-                Are you sure you want to {isBlocked ? "unblock" : "block"}{" "}
+                Are you sure you want to {isBlockedStatus ? "unblock" : "block"}{" "}
                 <strong>{getDisplayName()}</strong>?
-                {!isBlocked &&
+                {!isBlockedStatus &&
                   " This will prevent them from accessing their account."}
               </p>
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setShowBlockModal(false)}
+                  disabled={blockUnblockDeleteMutation.isPending}
                 >
                   Cancel
                 </Button>
                 <Button
-                  variant={isBlocked ? "default" : "destructive"}
+                  variant={isBlockedStatus ? "default" : "destructive"}
                   onClick={confirmBlock}
                   className="flex items-center gap-2"
+                  disabled={blockUnblockDeleteMutation.isPending}
                 >
-                  {isBlocked ? (
+                  {blockUnblockDeleteMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {isBlockedStatus ? "Unblocking..." : "Blocking..."}
+                    </>
+                  ) : isBlockedStatus ? (
                     <>
                       <CheckCircle className="w-4 h-4" />
                       Unblock
@@ -551,6 +726,19 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
           </div>
         </div>
       )}
+      {/* Toast Container for notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   );
 }
