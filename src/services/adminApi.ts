@@ -442,3 +442,32 @@ export const createPost = async (data: any, token: string | null) => {
     console.log(error);
   }
 };
+
+const API_BASE_URL_PRO = "https://ilosiwaju-mbaay-2025.com/api/v1/products";
+
+export const PRO = axios.create({
+  baseURL: API_BASE_URL_PRO,
+});
+
+export const uploadVendorProduct = async (
+  token: string,
+  productData: FormData
+) => {
+  try {
+    const response = await PRO.post(
+      `/upload_products`,
+      productData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    console.log(response);
+    return response.data;
+  } catch (error) {
+    console.error("Error uploading vendor product:", error);
+    throw error;
+  }
+};

@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import { ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
-import { useSelector } from "react-redux";
-import type { RootState } from "@/redux/store";
-import { useQuery } from "@tanstack/react-query";
-import { get_single_vendor } from "@/utils/vendorApi";
+// import { useSelector } from "react-redux";
+// import type { RootState } from "@/redux/store";
+// import { useQuery } from "@tanstack/react-query";
+// import { get_single_vendor } from "@/utils/vendorApi";
 
 interface SubSubCategory {
   name: string;
@@ -1836,11 +1836,11 @@ export default function CategorySelector({
     vendorPlan === "Counter" ||
     vendorPlan === "Shop" ||
     vendorPlan === "Premium";
-  const user = useSelector((state: RootState) => state.vendor);
-  const {} = useQuery({
-    queryKey: ["vendor"],
-    queryFn: () => get_single_vendor(user.token),
-  });
+  // const user = useSelector((state: any) => state.vendor);
+  // const {} = useQuery({
+  //   queryKey: ["vendor"],
+  //   queryFn: () => get_single_vendor(user.token),
+  // });
 
   // Use the activeCategory passed from parent (which gets updated from dropdown selection)
   const currentCategory = activeCategory;
@@ -1875,7 +1875,7 @@ export default function CategorySelector({
     return (
       <div className="relative">
         <motion.select
-          className="bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500"
+          className="px-4 py-2 pr-8 bg-white border border-gray-300 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500"
           value={currentCategory}
           onChange={(e) => handleCategoryChange(e.target.value)}
           disabled // Disable for non-upgraded vendors to prevent changing category
@@ -1887,9 +1887,9 @@ export default function CategorySelector({
             </option>
           ))}
         </motion.select>
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+        <div className="absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 pointer-events-none">
           <svg
-            className="fill-current h-4 w-4"
+            className="w-4 h-4 fill-current"
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 20 20"
           >
@@ -1902,15 +1902,15 @@ export default function CategorySelector({
 
   // For upgraded vendors, show the new category selection UI
   return (
-    <div className="bg-white p-4 sm:p-5 rounded-lg shadow w-full">
-      <h2 className="text-xl sm:text-2xl font-bold mb-4">Category</h2>
-      <div className="border rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="w-full p-4 bg-white rounded-lg shadow sm:p-5">
+      <h2 className="mb-4 text-xl font-bold sm:text-2xl">Category</h2>
+      <div className="p-4 space-y-4 border rounded-lg sm:p-6 sm:space-y-6">
         {/* Main Category */}
         <div className="space-y-2">
           <label className="block text-sm font-medium">Product Category</label>
           <motion.input
             type="text"
-            className="w-full p-3 border rounded-lg bg-gray-100 text-sm sm:text-base"
+            className="w-full p-3 text-sm bg-gray-100 border rounded-lg sm:text-base"
             value={currentCategory}
             readOnly
           />
@@ -1921,7 +1921,7 @@ export default function CategorySelector({
           <label className="block text-sm font-medium">{currentCategory}</label>
           <div className="relative">
             <motion.select
-              className="w-full p-3 border rounded-lg appearance-none pr-10 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm sm:text-base"
+              className="w-full p-3 pr-10 text-sm border rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500 sm:text-base"
               value={selectedSubCategory}
               onChange={(e) => setSelectedSubCategory(e.target.value)}
             >
@@ -1932,8 +1932,8 @@ export default function CategorySelector({
                 </option>
               ))}
             </motion.select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3">
-              <ChevronDown className="h-5 w-5 text-gray-500" />
+            <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+              <ChevronDown className="w-5 h-5 text-gray-500" />
             </div>
           </div>
         </div>
@@ -1946,7 +1946,7 @@ export default function CategorySelector({
             </label>
             <div className="relative">
               <motion.select
-                className="w-full p-3 border rounded-lg appearance-none pr-10 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm sm:text-base"
+                className="w-full p-3 pr-10 text-sm border rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500 sm:text-base"
                 value={selectedSubSubCategory}
                 onChange={(e) => setSelectedSubSubCategory(e.target.value)}
               >
@@ -1959,8 +1959,8 @@ export default function CategorySelector({
                     </option>
                   ))}
               </motion.select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3">
-                <ChevronDown className="h-5 w-5 text-gray-500" />
+              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                <ChevronDown className="w-5 h-5 text-gray-500" />
               </div>
             </div>
           </div>
