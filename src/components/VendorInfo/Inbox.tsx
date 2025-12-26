@@ -28,7 +28,7 @@ import EmojiPicker from "emoji-picker-react";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import { RootState } from "../redux/store";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 
 interface Message {
   id: string;
@@ -93,7 +93,7 @@ interface StoredData {
 
 export default function ChatInterface() {
   const adminToken = useSelector((state: RootState) => state.admin.token);
-  const navigate = useNavigate();
+
   const API_CHAT_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/admin";
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<string>("");
