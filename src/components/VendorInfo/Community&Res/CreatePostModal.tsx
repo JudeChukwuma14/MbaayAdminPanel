@@ -186,7 +186,7 @@ export default function CreatePostModal({
               <div className="p-4 border-b">
                 <motion.button
                   onClick={onClose}
-                  className="absolute text-gray-500 top-4 left-4 hover:text-gray-700"
+                  className="absolute text-white top-4 left-4"
                 >
                   <X className="w-6 h-6" />
                 </motion.button>

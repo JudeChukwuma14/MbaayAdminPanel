@@ -102,7 +102,6 @@ const routesConfig: RouteObject[] = [
             path: "kyc",
             element: withSuspense(() => <Kyc />),
           },
-          { path: "inbox", element: withSuspense(Inbox) },
           { path: "all-post", element: withSuspense(AllPost) },
           { path: "mbaay-community", element: withSuspense(MbaayCommunity) },
           { path: "requests", element: withSuspense(Requests) },

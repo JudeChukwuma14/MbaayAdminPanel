@@ -112,13 +112,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ darkMode }) => {
   const renderNavLinks = () => {
     // Customer-care sees ONLY inbox
     if (role === "Customer care") {
-      return <NavItem title="Inbox" to="/app" Icon={Inbox} />;
+      return <NavItem title="Inbox" to="/" Icon={Inbox} />;
     }
 
     // Admin & super-admin see everything EXCEPT inbox
     const adminLinks = (
       <>
-        <NavItem title="Dashboard" to="/app" Icon={Home} end={true} />
+        <NavItem title="Dashboard" to="/" Icon={Home} end={true} />
         <NavItem title="Orders" to="orders" Icon={ShoppingCart} />
         <NavItem
           title="Products"
