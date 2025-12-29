@@ -129,10 +129,22 @@ const AllUsers = () => {
   const filteredVendors = vendor.filter((v) => {
     const matchesSearch =
       v.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      v.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.storeName?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "all" ||
       v.kycStatus?.toLowerCase() === statusFilter.toLowerCase();
+    return matchesSearch && matchesStatus;
+  });
+
+  const filteredAdmins = admins.filter((a: any) => {
+    const matchesSearch =
+      a.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && (a.status?.toLowerCase() === "active" || !a.status)) ||
+      (statusFilter === "inactive" && a.status?.toLowerCase() === "inactive");
     return matchesSearch && matchesStatus;
   });
 
@@ -203,7 +215,7 @@ const AllUsers = () => {
             <div className="relative">
               <Search className="absolute w-4 h-4 -translate-y-1/2 left-3 top-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search users or vendors..."
+                placeholder={`Search ${activeTab === "users" ? "users" : activeTab === "vendors" ? "vendors" : "admins"}...`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 w-80"
@@ -530,7 +542,7 @@ const AllUsers = () => {
                 <TableBody>
                   {adminLoading ? (
                     <SpinnerRow colSpan={6} />
-                  ) : admins.length === 0 ? (
+                  ) : filteredAdmins.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="py-12 text-center">
                         <Shield className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
@@ -543,7 +555,7 @@ const AllUsers = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    admins.map((a: any) => (
+                    filteredAdmins.map((a: any) => (
                       <TableRow key={a._id}>
                         <TableCell className="font-medium">{a.name}</TableCell>
                         <TableCell className="text-muted-foreground">

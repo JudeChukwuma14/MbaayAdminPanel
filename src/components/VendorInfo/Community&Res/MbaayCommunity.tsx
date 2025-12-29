@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CreatePostModal from "./CreatePostModal";
+import EditMbaayCommunityModal from "./EditMbaayCommunityModal";
 import { useSelector } from "react-redux";
 import { useQuery } from "@tanstack/react-query";
 import { getMbaayCommunity } from "@/services/adminApi";
@@ -8,7 +9,9 @@ import { RootState } from "@/components/redux/store";
 
 export default function MbaayCommunity() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const admin = useSelector((state: RootState) => state.admin);
+  const role = admin?.role;
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["mbaay_community"],
@@ -21,7 +24,7 @@ export default function MbaayCommunity() {
   const members: any[] = community?.members || [];
   const communityPosts = community?.communityPosts || [];
 
-  // // Empty state component for no members
+  // // Empty state component for no membersN
   // const EmptyMembersState = () => (
   //   <div className="flex flex-col items-center justify-center py-8 text-center">
   //     <div className="mb-4">
@@ -427,7 +430,7 @@ export default function MbaayCommunity() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {communityPosts.map((post: any) => (
+                    {communityPosts.slice().reverse().map((post: any) => (
                       <motion.div
                         key={post._id}
                         initial={{ opacity: 0, y: 20 }}
@@ -480,6 +483,33 @@ export default function MbaayCommunity() {
                             {post.content}
                           </p>
                         </div>
+
+                        {/* Post Images */}
+                        {post.posts_Images && post.posts_Images.length > 0 && (
+                          <div className="mb-6">
+                            <div className="grid grid-cols-2 gap-3">
+                              {post.posts_Images
+                                .slice(0, 4)
+                                .map((image: string, index: number) => (
+                                  <div key={index} className="relative group">
+                                    <img
+                                      src={image}
+                                      alt={`Post image ${index + 1}`}
+                                      className="object-cover w-full h-48 transition-shadow duration-300 rounded-lg shadow-md group-hover:shadow-xl"
+                                    />
+                                    {index === 3 &&
+                                      post.posts_Images.length > 4 && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                                          <span className="text-2xl font-bold text-white">
+                                            +{post.posts_Images.length - 4}
+                                          </span>
+                                        </div>
+                                      )}
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Post Tags */}
                         {post.tags && post.tags.length > 0 && (
@@ -602,6 +632,20 @@ export default function MbaayCommunity() {
                 {community?.description ||
                   "The official Mbaay community - a vibrant space where cultural enthusiasts, artisans, and creatives come together to share, inspire, and connect."}
               </p>
+
+              {/* Edit Button */}
+              {
+                role === "Super Admin" &&  (
+                     <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="px-6 py-3 mt-3 font-medium text-white transition-all duration-300 transform rounded-md shadow-lg bg-gradient-to-r from-orange-500 to-orange-600 hover:shadow-xl hover:-translate-y-1 text-center text-[15px]"
+                >
+                  Edit Connunity Profile
+                </motion.button>
+                )
+              }
             </div>
 
             {/* Quick Stats */}
@@ -678,6 +722,14 @@ export default function MbaayCommunity() {
       <CreatePostModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+
+      <EditMbaayCommunityModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        initialName={community?.name || ""}
+        initialDescription={community?.description || ""}
+        initialImage={community?.community_Images || ""}
       />
     </div>
   );

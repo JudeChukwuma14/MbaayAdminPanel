@@ -56,10 +56,6 @@ const Kyc = lazy(() => import("../components/VendorInfo/Verification/Kyc"));
 
 const AllUsers = lazy(() => import("../components/VendorInfo/AllUsers"));
 
-const Profile = lazy(
-  () => import("../components/VendorInfo/Community&Res/Profile")
-);
-
 const withSuspense = (Component: React.ComponentType) => (
   <Suspense fallback={<Spinner />}>
     <Component />
@@ -111,8 +107,7 @@ const routesConfig: RouteObject[] = [
           },
           { path: "reviews", element: withSuspense(Review) },
           { path: "general-setting", element: withSuspense(GeneralSetting) },
-          { path: "user-management", element: withSuspense(AllUsers) },
-          { path: "profile", element: withSuspense(Profile) },
+          { path: "user-management", element: withSuspense(AllUsers) }
         ],
       },
     ],

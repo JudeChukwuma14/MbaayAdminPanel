@@ -5,7 +5,7 @@ import { X, Image as ImageIcon, Users, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/components/redux/store";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createPost, get_communities, getAllVendor } from "@/services/adminApi";
 
 interface CreatePostModalProps {
@@ -41,7 +41,7 @@ interface CommunityItem {
 
 interface Tag {
   id: string;
-  type: "vendor" | "community";
+  type: "vendors" | "community";
   name: string;
   avatar?: string;
 }
@@ -56,7 +56,6 @@ export default function CreatePostModal({
   const [isUploading, setIsUploading] = useState(false);
   const [showTagSelector, setShowTagSelector] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  console.log("con", content);
   const [tagType, setTagType] = useState<"vendor" | "community">("vendor");
 
   const admin = useSelector((state: RootState) => state.admin);
@@ -72,11 +71,12 @@ export default function CreatePostModal({
     queryKey: ["communities"],
     queryFn: () => get_communities(),
   });
-
+const queryClient = useQueryClient();
   // Create post mutation
   const createPostMutation = useMutation({
     mutationFn: (formData: FormData) => createPost(formData, admin?.token),
     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ["mbaay_community"] });
       setContent("");
       setSelectedFiles([]);
       setSelectedTags([]);
@@ -96,12 +96,15 @@ export default function CreatePostModal({
     name: string,
     avatar?: string
   ) => {
+    // Convert to backend enum values
+    const backendType = type === "vendor" ? "vendors" : "community";
+    
     setSelectedTags((prev) => {
       const existing = prev.find((tag) => tag.id === id);
       if (existing) {
         return prev.filter((tag) => tag.id !== id);
       } else {
-        return [...prev, { id, type, name, avatar }];
+        return [...prev, { id, type: backendType as "vendors" | "community", name, avatar }];
       }
     });
   };
@@ -109,7 +112,8 @@ export default function CreatePostModal({
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!content.trim()) {
+    const trimmedContent = content.trim();
+    if (!trimmedContent) {
       alert("Post content cannot be empty.");
       return;
     }
@@ -118,17 +122,16 @@ export default function CreatePostModal({
 
     try {
       const formData = new FormData();
-      formData.append("content", content.trim());
+      formData.append("content", trimmedContent);
       // formData.append("posterType", "admin");
       formData.append("posterId", admin?.admin?.id || "");
 
       // Add tags
-      const tags = selectedTags.map((tag) => ({
-        tagId: tag.id,
-        tagType: tag.type,
-      }));
-      if (tags.length > 0) {
-        formData.append("tags", JSON.stringify(tags));
+      if (selectedTags.length > 0) {
+        selectedTags.forEach((tag, index) => {
+          formData.append(`tags[${index}][tagId]`, tag.id);
+          formData.append(`tags[${index}][tagType]`, tag.type);
+        });
       }
 
       // Add images
@@ -141,7 +144,7 @@ export default function CreatePostModal({
       for (let [key, value] of formData.entries()) {
         console.log(key, value);
       }
-
+      console.log("FROM", formData.values());
       await createPostMutation.mutateAsync(formData);
     } catch (error: any) {
       console.error("Error creating post:", error);
@@ -222,7 +225,7 @@ export default function CreatePostModal({
                         <span
                           key={tag.id}
                           className={`inline-flex items-center gap-2 px-3 py-1 text-sm rounded-full ${
-                            tag.type === "vendor"
+                            tag.type === "vendors"
                               ? "bg-blue-100 text-blue-700 border border-blue-200"
                               : "bg-green-100 text-green-700 border border-green-200"
                           }`}
@@ -240,14 +243,14 @@ export default function CreatePostModal({
                           )}
                           @{tag.name}
                           <span className="text-xs opacity-75">
-                            ({tag.type})
+                            ({tag.type === "vendors" ? "vendor" : tag.type})
                           </span>
                           <button
                             type="button"
                             onClick={() =>
                               handleTagToggle(
                                 tag.id,
-                                tag.type,
+                                tag.type === "vendors" ? "vendor" : "community",
                                 tag.name,
                                 tag.avatar
                               )
@@ -262,16 +265,44 @@ export default function CreatePostModal({
                   )}
 
                   {selectedFiles.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto">
-                      {selectedFiles.map((file, index) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt={`Preview ${index + 1}`}
-                            className="object-cover w-20 h-20 rounded-lg"
-                          />
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">
+                          Selected Images ({selectedFiles.length})
+                        </span>
+                        <motion.button
+                          type="button"
+                          onClick={() => setSelectedFiles([])}
+                          className="px-3 py-1 text-xs text-gray-600 transition-colors rounded-full hover:text-gray-800 hover:bg-gray-100"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          Clear All
+                        </motion.button>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        {selectedFiles.map((file, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`Preview ${index + 1}`}
+                              className="object-cover w-24 h-24 transition-shadow duration-300 rounded-lg shadow-md group-hover:shadow-xl"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+                              }}
+                              className="absolute w-6 h-6 text-white transition-colors bg-red-500 rounded-full shadow-lg opacity-0 -top-2 -right-2 hover:bg-red-600 group-hover:opacity-100"
+                            >
+                              ×
+                            </button>
+                            <div className="absolute px-2 py-1 text-xs text-white bg-black bg-opacity-50 rounded bottom-1 left-1">
+                              {index + 1}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
