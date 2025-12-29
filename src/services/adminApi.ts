@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const API_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/admin";
 export const api = axios.create({
@@ -11,6 +12,11 @@ export const com = axios.create({
   baseURL: API_BASE_URL_COM,
 });
 
+const API_BASE_URL_PRO = "https://ilosiwaju-mbaay-2025.com/api/v1/products";
+
+export const PRO = axios.create({
+  baseURL: API_BASE_URL_PRO,
+});
 export const createAdmin = async (userData: any) => {
   try {
     const response = await api.post("/create_admin", userData);
@@ -153,10 +159,28 @@ export const getUserById = async (id: string | null) => {
     console.log(error);
   }
 };
+
 export const getVendorById = async (id: string | null) => {
   try {
     const response = await api.get(`/one_vendor/${id}`);
 
+    return response.data.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const getAdminById = async (
+  adminId: string | null,
+  token: string | null
+) => {
+  try {
+    const response = await api.get(`/get_admin/${adminId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    console.log(response.data.data);
     return response.data.data;
   } catch (error) {
     console.log(error);
@@ -241,7 +265,7 @@ export const getAllOrders = async (token: string | null) => {
 
 export const BlockUnblockDeleteUser = async (
   userId: string,
-  userType: "user" | "vendor" | "admin",
+  userType: "user" | "vendor" | "admin" | "customerCare",
   action: "block" | "unblock" | "delete",
   token: string | null
 ) => {
@@ -443,31 +467,57 @@ export const createPost = async (data: any, token: string | null) => {
   }
 };
 
-const API_BASE_URL_PRO = "https://ilosiwaju-mbaay-2025.com/api/v1/products";
+export const editMbaayCommunity = async (
+  token: string,
+  communityData: FormData
+) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
 
-export const PRO = axios.create({
-  baseURL: API_BASE_URL_PRO,
-});
+    const response = await api.put(`/community/mbaay/edit`, communityData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    console.log(response);
+    return response.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 export const uploadVendorProduct = async (
   token: string,
   productData: FormData
 ) => {
   try {
-    const response = await PRO.post(
-      `/upload_products`,
-      productData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const response = await PRO.post(`/upload_products`, productData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${token}`,
+      },
+    });
     console.log(response);
     return response.data;
   } catch (error) {
     console.error("Error uploading vendor product:", error);
     throw error;
   }
+};
+
+// React Query hooks
+export const useEditMbaayCommunity = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ token, communityData }: { token: string; communityData: FormData }) => 
+      editMbaayCommunity(token, communityData),
+    onSuccess: () => {
+      // Invalidate and refetch the Mbaay community data
+      queryClient.invalidateQueries({ queryKey: ["mbaay_community"] });
+    },
+  });
 };

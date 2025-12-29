@@ -27,6 +27,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getUserById,
   getVendorById,
+  getAdminById,
   BlockUnblockDeleteUser,
   sendPrivateMessage,
 } from "@/services/adminApi";
@@ -35,7 +36,7 @@ import { RootState } from "../redux/store";
 import { toast, ToastContainer } from "react-toastify";
 
 interface UserVendorDetailProps {
-  type: "user" | "vendor" | "admin";
+  type: "user" | "vendor" | "admin" | "customerCare";
   id: string | null;
   onBack: () => void;
 }
@@ -67,17 +68,52 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
     enabled: type === "vendor" && !!id,
     staleTime: 1000 * 60 * 5,
   });
-  // const adminQuery = useQuery({
-  //   queryKey: ["admin", id],
-  //   queryFn: () => getVendorById(id),
-  //   enabled: type === "admin" && !!id,
-  //   staleTime: 1000 * 60 * 5,
-  // });
+
+  const adminQuery = useQuery({
+    queryKey: ["admin", id],
+    queryFn: () => getAdminById(id, admin.token),
+    enabled: (type === "admin" || type === "customerCare") && !!id,
+    staleTime: 1000 * 60 * 5,
+  });
+
   console.log("VendorData", vendorQuery.data);
-  const data = type === "user" ? userQuery.data : vendorQuery.data;
+  console.log("AdminData", adminQuery.data);
+
+  // Determine the actual type based on admin role
+  const actualType =
+    type === "admin" && adminQuery.data?.role === "customerCare"
+      ? "customerCare"
+      : type;
+
+  // Check if user is super admin (hide quick actions)
+  const isSuperAdmin =
+    type === "admin" && adminQuery.data?.role === "Super Admin";
+
+  // Check if user is admin or customer care (hide private messages)
+  const shouldHidePrivateMessages =
+    (type === "admin" || actualType === "customerCare") &&
+    adminQuery.data?.role !== "Super Admin";
+
+  const data =
+    actualType === "user"
+      ? userQuery.data
+      : actualType === "vendor"
+      ? vendorQuery.data
+      : adminQuery.data;
+
   const isLoading =
-    type === "user" ? userQuery.isLoading : vendorQuery.isLoading;
-  const error = type === "user" ? userQuery.error : vendorQuery.error;
+    type === "user"
+      ? userQuery.isLoading
+      : type === "vendor"
+      ? vendorQuery.isLoading
+      : adminQuery.isLoading;
+
+  const error =
+    type === "user"
+      ? userQuery.error
+      : type === "vendor"
+      ? vendorQuery.error
+      : adminQuery.error;
 
   const isBlocked = data?.isBlocked;
   // Handle both boolean and string values for isBlocked
@@ -105,7 +141,7 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
       action,
     }: {
       userId: string;
-      userType: "user" | "vendor" | "admin";
+      userType: "user" | "vendor" | "admin" | "customerCare";
       action: "block" | "unblock" | "delete";
     }) => BlockUnblockDeleteUser(userId, userType, action, admin.token),
     onSuccess: (data, variables) => {
@@ -241,7 +277,6 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
       userType: type,
       action: "delete",
     });
-    onBack();
   };
   const sendMessage = () => {
     if (!messageText.trim() || !messageTitle.trim()) return;
@@ -277,11 +312,21 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
               className="flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to {type === "user" ? "Users" : "Vendors"}
+              Back to{" "}
+              {type === "user"
+                ? "Users"
+                : type === "vendor"
+                ? "Vendors"
+                : "Admins"}
             </Button>
             <Separator orientation="vertical" className="h-6" />
             <h1 className="text-2xl font-bold text-foreground">
-              {type === "user" ? "User" : "Vendor"} Details
+              {type === "user"
+                ? "User"
+                : type === "vendor"
+                ? "Vendor"
+                : adminQuery?.data?.role || "Admin"}{" "}
+              Details
             </h1>
           </div>
         </div>
@@ -306,7 +351,7 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                       />
                       <AvatarFallback className="text-lg">
                         {getDisplayName()
-                          .split(" ")
+                          ?.split(" ")
                           .map((n: any) => n[0])
                           .join("")}
                       </AvatarFallback>
@@ -343,50 +388,88 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                     Basic Information
                   </h3>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="flex items-center gap-3">
-                      {type === "user" ? (
-                        <User className="w-5 h-5 text-muted-foreground" />
-                      ) : (
-                        <Building2 className="w-5 h-5 text-muted-foreground" />
-                      )}
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          {type === "user" ? "Role" : "Store Type"}
-                        </p>
-                        <p className="font-medium">
-                          {type === "user" ? "User" : data.storeType || "N/A"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <Calendar className="w-5 h-5 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          Join Date
-                        </p>
-                        <p className="font-medium">
-                          {new Date(
-                            data.createdAt || data.joinDate
-                          ).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-
-                    {type === "vendor" && data.kycStatus && (
-                      <div className="flex items-center gap-3">
-                        <Shield className="w-5 h-5 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm text-muted-foreground">
-                            KYC Status
-                          </p>
-                          <Badge
-                            variant={getStatusBadgeVariant(data.kycStatus)}
-                          >
-                            {data.kycStatus}
-                          </Badge>
+                    {type === "admin" ? (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <User className="w-5 h-5 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              Role
+                            </p>
+                            <p className="font-medium">
+                              {data.role || "Admin"}
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                        <div className="flex items-center gap-3">
+                          <Shield className="w-5 h-5 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              Admin ID
+                            </p>
+                            <p className="font-medium">{data._id || "N/A"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Calendar className="w-5 h-5 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              Version
+                            </p>
+                            <p className="font-medium">v{data.__v || 0}</p>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3">
+                          {type === "user" ? (
+                            <User className="w-5 h-5 text-muted-foreground" />
+                          ) : (
+                            <Building2 className="w-5 h-5 text-muted-foreground" />
+                          )}
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              {type === "user" ? "Role" : "Store Type"}
+                            </p>
+                            <p className="font-medium">
+                              {type === "user"
+                                ? "User"
+                                : data.storeType || "N/A"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <Calendar className="w-5 h-5 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              Join Date
+                            </p>
+                            <p className="font-medium">
+                              {new Date(
+                                data.createdAt || data.joinDate
+                              ).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        {type === "vendor" && data.kycStatus && (
+                          <div className="flex items-center gap-3">
+                            <Shield className="w-5 h-5 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm text-muted-foreground">
+                                KYC Status
+                              </p>
+                              <Badge
+                                variant={getStatusBadgeVariant(data.kycStatus)}
+                              >
+                                {data.kycStatus}
+                              </Badge>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -406,7 +489,7 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                           </p>
                         </div>
                       </>
-                    ) : (
+                    ) : type === "vendor" ? (
                       <>
                         <div className="p-4 text-center rounded-lg bg-muted/50">
                           <p className="text-2xl font-bold text-primary">
@@ -437,9 +520,179 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                           </p>
                         </div>
                       </>
+                    ) : (
+                      // Admin statistics
+                      <>
+                        <div className="p-4 text-center rounded-lg bg-muted/50">
+                          <p className="text-2xl font-bold text-primary">
+                            {data.requests?.length || 0}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Total Requests
+                          </p>
+                        </div>
+                        <div className="p-4 text-center rounded-lg bg-muted/50">
+                          <p className="text-2xl font-bold text-primary">
+                            {data.orders?.length || 0}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Total Orders
+                          </p>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
+
+                {/* ---- admin requests section ---- */}
+                {type === "admin" &&
+                  data.requests &&
+                  data.requests.length > 0 && (
+                    <div>
+                      <h3 className="mb-4 text-lg font-semibold">
+                        Admin Requests
+                      </h3>
+                      <div className="space-y-4">
+                        {data.requests.map((request: any, index: number) => (
+                          <Card key={request._id || index}>
+                            <CardHeader>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <CardTitle className="text-base">
+                                    {request.storeName || request.name}
+                                  </CardTitle>
+                                  <p className="text-sm text-muted-foreground">
+                                    {request.email}
+                                  </p>
+                                </div>
+                                <Badge
+                                  variant={getStatusBadgeVariant(
+                                    request.verificationStatus
+                                  )}
+                                  className="text-sm"
+                                >
+                                  {request.verificationStatus || "Pending"}
+                                </Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Building2 className="w-4 h-4" />
+                                  <span>
+                                    Store Type: {request.storeType || "N/A"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Phone className="w-4 h-4" />
+                                  <span>{request.storePhone || "N/A"}</span>
+                                </div>
+                                {request.subscription && (
+                                  <>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <Shield className="w-4 h-4" />
+                                      <span>
+                                        Plan:{" "}
+                                        {request.subscription.currentPlan ||
+                                          "N/A"}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <Calendar className="w-4 h-4" />
+                                      <span>
+                                        Billing:{" "}
+                                        {request.subscription.billingCycle ||
+                                          "N/A"}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                      <Shield className="w-4 h-4" />
+                                      <span>
+                                        Status:{" "}
+                                        {request.subscription.status || "N/A"}
+                                      </span>
+                                    </div>
+                                  </>
+                                )}
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>
+                                    Created:{" "}
+                                    {new Date(
+                                      request.createdAt
+                                    ).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                {/* ---- admin orders section ---- */}
+                {type === "admin" && data.orders && data.orders.length > 0 && (
+                  <div>
+                    <h3 className="mb-4 text-lg font-semibold">Admin Orders</h3>
+                    <div className="space-y-4">
+                      {data.orders.map((order: any, index: number) => (
+                        <Card key={order._id || index}>
+                          <CardHeader>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <CardTitle className="text-base">
+                                  Order #{order.orderId || index + 1}
+                                </CardTitle>
+                                <p className="text-sm text-muted-foreground">
+                                  {order.customerName || "Unknown Customer"}
+                                </p>
+                              </div>
+                              <Badge
+                                variant={getStatusBadgeVariant(order.status)}
+                                className="text-sm"
+                              >
+                                {order.status || "Pending"}
+                              </Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Calendar className="w-4 h-4" />
+                                <span>
+                                  Order Date:{" "}
+                                  {new Date(
+                                    order.createdAt || order.orderDate
+                                  ).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <CreditCard className="w-4 h-4" />
+                                <span>
+                                  Amount: $
+                                  {order.totalAmount || order.amount || "0.00"}
+                                </span>
+                              </div>
+                              {order.paymentMethod && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <CreditCard className="w-4 h-4" />
+                                  <span>Payment: {order.paymentMethod}</span>
+                                </div>
+                              )}
+                              {order.products && order.products.length > 0 && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Building2 className="w-4 h-4" />
+                                  <span>Products: {order.products.length}</span>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {type === "vendor" && data.bankAccount && (
                   <div>
@@ -495,58 +748,79 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button
-                  variant={isBlockedStatus ? "default" : "destructive"}
-                  className="flex items-center w-full gap-2"
-                  onClick={handleBlockToggle}
-                  disabled={blockUnblockDeleteMutation.isPending}
-                >
-                  {blockUnblockDeleteMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {isBlockedStatus ? "Unblocking..." : "Blocking..."}
-                    </>
-                  ) : isBlockedStatus ? (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      Unblock {type === "user" ? "User" : "Vendor"}
-                    </>
-                  ) : (
-                    <>
-                      <Ban className="w-4 h-4" />
-                      Block {type === "user" ? "User" : "Vendor"}
-                    </>
-                  )}
-                </Button>
+                {!isSuperAdmin && (
+                  <>
+                    <Button
+                      variant={isBlockedStatus ? "default" : "destructive"}
+                      className="flex items-center w-full gap-2"
+                      onClick={handleBlockToggle}
+                      disabled={blockUnblockDeleteMutation.isPending}
+                    >
+                      {blockUnblockDeleteMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          {isBlockedStatus ? "Unblocking..." : "Blocking..."}
+                        </>
+                      ) : isBlockedStatus ? (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          Unblock{" "}
+                         {type === "user"
+                ? "User"
+                : type === "vendor"
+                ? "Vendor"
+                : adminQuery?.data?.role || "Admin"}{" "}
+                        </>
+                      ) : (
+                        <>
+                          <Ban className="w-4 h-4" />
+                          Block{" "}
+                          {type === "user"
+                ? "User"
+                : type === "vendor"
+                ? "Vendor"
+                : adminQuery?.data?.role || "Admin"}{" "}
+                        </>
+                      )}
+                    </Button>
 
-                <Button
-                  variant="outline"
-                  className="flex items-center w-full gap-2 bg-transparent"
-                  onClick={() => setShowMessageModal(true)}
-                  disabled={blockUnblockDeleteMutation.isPending}
-                >
-                  <Mail className="w-4 h-4" />
-                  Send Private Message
-                </Button>
+                    {!shouldHidePrivateMessages && (
+                      <Button
+                        variant="outline"
+                        className="flex items-center w-full gap-2 bg-transparent"
+                        onClick={() => setShowMessageModal(true)}
+                        disabled={blockUnblockDeleteMutation.isPending}
+                      >
+                        <Mail className="w-4 h-4" />
+                        Send Private Message
+                      </Button>
+                    )}
 
-                <Button
-                  variant="destructive"
-                  className="flex items-center w-full gap-2"
-                  onClick={handleDelete}
-                  disabled={blockUnblockDeleteMutation.isPending}
-                >
-                  {blockUnblockDeleteMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4" />
-                      Delete {type === "user" ? "User" : "Vendor"}
-                    </>
-                  )}
-                </Button>
+                    <Button
+                      variant="destructive"
+                      className="flex items-center w-full gap-2"
+                      onClick={handleDelete}
+                      disabled={blockUnblockDeleteMutation.isPending}
+                    >
+                      {blockUnblockDeleteMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4" />
+                          Delete{" "}
+                         {type === "user"
+                ? "User"
+                : type === "vendor"
+                ? "Vendor"
+                : adminQuery?.data?.role || "Admin"}{" "}
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -672,7 +946,11 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">
                 {isBlockedStatus ? "Unblock" : "Block"}{" "}
-                {type === "user" ? "User" : "Vendor"}
+                {type === "user"
+                  ? "User"
+                  : type === "vendor"
+                  ? "Vendor"
+                  : "Admin"}
               </h3>
               <Button
                 variant="ghost"
