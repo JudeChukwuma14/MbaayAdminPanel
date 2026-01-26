@@ -489,12 +489,12 @@ export const editMbaayCommunity = async (
   }
 };
 
-export const uploadVendorProduct = async (
+export const uploadAdminProduct = async (
   token: string,
   productData: FormData
 ) => {
   try {
-    const response = await PRO.post(`/upload_products`, productData, {
+    const response = await PRO.post(`/admin_upload_products`, productData, {
       headers: {
         "Content-Type": "multipart/form-data",
         Authorization: `Bearer ${token}`,

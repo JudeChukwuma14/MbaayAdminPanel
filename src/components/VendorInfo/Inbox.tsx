@@ -1,1561 +1,1007 @@
-import type React from "react";
-import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, {
+  useCallback,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import {
-  Search,
-  Plus,
-  Paperclip,
-  Smile,
-  SendIcon,
-  Edit,
-  Trash,
-  Reply,
-  Pin,
-  X,
-  Video,
-  Play,
-  Pause,
-  Copy,
-  Forward,
-  ChevronRight,
-  Save,
-  VolumeX,
-  Volume2,
-  Maximize,
-  // MessageSquare,
-} from "lucide-react";
-import EmojiPicker from "emoji-picker-react";
+  Box,
+  List,
+  ListItem,
+  ListItemButton,
+  TextField,
+  Button,
+  Typography,
+  Avatar,
+  Divider,
+  Badge,
+  IconButton,
+  AppBar,
+  Toolbar,
+  useTheme,
+  useMediaQuery,
+  CircularProgress,
+} from "@mui/material";
 import axios from "axios";
 import { useSelector } from "react-redux";
+import { jwtDecode } from "jwt-decode";
+import {
+  Send as SendIcon,
+  Search as SearchIcon,
+  Menu as MenuIcon,
+  Inbox as InboxIcon,
+  Chat as ChatIcon,
+} from "@mui/icons-material";
+import { styled } from "@mui/material/styles";
 import { RootState } from "../redux/store";
-// import { useNavigate } from "react-router-dom";
+import { io, Socket } from "socket.io-client";
 
-interface Message {
-  id: string;
-  content: string;
-  sender: string;
-  timestamp: string;
-  isVendor: boolean;
-  files?: {
-    type: "image" | "document" | "video";
-    url: string;
-    name: string;
-    size: number;
-    duration?: string;
-  }[];
-  replyTo?: string;
-  isPinned?: boolean;
-  isEdited?: boolean;
-  deletedFor: "none" | "me" | "everyone";
-  unreadCount?: number;
-}
-
-interface Chat {
+// Interface for conversation type
+interface Conversation {
   id: string;
   name: string;
-  avatar: string;
+  userType: "User" | "Vendor" | "Customer Care";
   lastMessage: string;
-  timestamp: string;
-  isVendor: boolean;
-  isOnline: boolean;
-  messages: Message[];
-  pinnedMessageId?: string;
-  unreadCount: number;
+  time: string;
+  unread: number;
 }
 
-interface DeleteDialogState {
-  isOpen: boolean;
-  messageId: string | null;
+// Interface for message type
+interface Message {
+  _id: string;
+  content: string;
+  sender: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  senderModel: string;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
-interface VideoPlayerState {
-  isOpen: boolean;
-  videoUrl: string | null;
-}
+const StyledBadge = styled(Badge)(({ theme }) => ({
+  "& .MuiBadge-badge": {
+    backgroundColor: "#F25E40",
+    color: "#fff",
+    boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+    "&::after": {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      borderRadius: "50%",
+      animation: "ripple 1.2s infinite ease-in-out",
+      border: "1px solid",
+      borderColor: "#F25E40",
+      content: '""',
+    },
+  },
+  "@keyframes ripple": {
+    "0%": {
+      transform: "scale(.8)",
+      opacity: 1,
+    },
+    "100%": {
+      transform: "scale(2.4)",
+      opacity: 0,
+    },
+  },
+}));
 
-interface ForwardDialogState {
-  isOpen: boolean;
-  messageId: string | null;
-}
-
-interface ImageViewerState {
-  isOpen: boolean;
-  images: { url: string; name: string }[];
-  currentIndex: number;
-}
-
-const LOCAL_STORAGE_KEY = "chatInterfaceData";
-
-interface StoredData {
-  chats: Chat[];
-  activeChat: string;
-}
-
-export default function ChatInterface() {
-  const adminToken = useSelector((state: RootState) => state.admin.token);
-
-  const API_CHAT_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/admin";
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [activeChat, setActiveChat] = useState<string>("");
+const Inbox = () => {
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState("");
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
-    isOpen: false,
-    messageId: null,
-  });
-  const [deleteType, setDeleteType] = useState<"me" | "everyone">("me");
-  const [videoPlayer, setVideoPlayer] = useState<VideoPlayerState>({
-    isOpen: false,
-    videoUrl: null,
-  });
-  const [forwardDialog, setForwardDialog] = useState<ForwardDialogState>({
-    isOpen: false,
-    messageId: null,
-  });
-  const [isPlaying, setIsPlaying] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [imageViewer, setImageViewer] = useState<ImageViewerState>({
-    isOpen: false,
-    images: [],
-    currentIndex: 0,
-  });
-
-  const fallbackStorage = useRef(new Map<string, string>());
-
-  useEffect(() => {
-    loadFromLocalStorage();
-  }, []);
-
-  // Fetch all customer care chats for the sidebar
-  useEffect(() => {
-    if (adminToken) {
-      fetchCustomerCareChats();
-    }
-  }, [adminToken]);
-
-  useEffect(() => {
-    saveToLocalStorage();
-  }, [chats, activeChat]);
-
-  const isLocalStorageAvailable = () => {
-    try {
-      localStorage.setItem("test", "test");
-      localStorage.removeItem("test");
-      return true;
-    } catch (e) {
-      return false;
-    }
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const adminToken = useSelector((state: RootState) => state.admin.token);
+  const API_CHAT_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/admin";
+  const token = jwtDecode(adminToken as string) as {
+    _id: string;
+    name: string;
   };
+  const REFRESH_INTERVAL = 10000; // 10 seconds
+  const [isBackgroundRefresh, setIsBackgroundRefresh] = useState(false);
+  console.log(isBackgroundRefresh);
+  const [typingStatus, setTypingStatus] = useState<{
+    [key: string]: { isTyping: boolean; name: string };
+  }>({});
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const SOCKET_SERVER_URL = "https://ilosiwaju-mbaay-2025.com";
+  const TYPING_INDICATOR_TIMEOUT = 3000; // 3 seconds
 
-  const fetchCustomerCareChats = async () => {
-    try {
-      const res = await axios.get(
-        `${API_CHAT_BASE_URL}/customer_care_messages`,
-        {
-          headers: { Authorization: `Bearer ${adminToken}` },
-        }
-      );
-      console.log("Res", res);
-      const raw = (res.data?.chats ||
-        res.data?.data ||
-        res.data ||
-        []) as any[];
-      const mapped: Chat[] = raw.map((c: any) => {
-        const last =
-          c.lastMessage ||
-          c.latestMessage ||
-          c.messages?.[c.messages?.length - 1] ||
-          {};
-        return {
-          id: c._id || c.id,
-          name:
-            c.user?.name ||
-            c.customer?.name ||
-            c.vendor?.name ||
-            c.title ||
-            "Conversation",
-          avatar:
-            c.user?.avatar || c.customer?.avatar || c.vendor?.avatar || "",
-          lastMessage: last.content || last.text || "",
-          timestamp: new Date(
-            c.updatedAt || last.createdAt || Date.now()
-          ).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          isVendor: !!c.vendor,
-          isOnline: Boolean(c.user?.isOnline || c.customer?.isOnline || false),
-          messages: Array.isArray(c.messages)
-            ? c.messages.map((m: any) => ({
-                id: m._id || m.id,
-                content: m.content || m.text || "",
-                sender: m.senderName || m.sender?.name || "User",
-                timestamp: new Date(
-                  m.createdAt || Date.now()
-                ).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }),
-                isVendor: !!m.isVendor,
-                deletedFor: "none",
-              }))
-            : [],
-          pinnedMessageId: undefined,
-          unreadCount: typeof c.unreadCount === "number" ? c.unreadCount : 0,
-        } as Chat;
-      });
-      setChats(mapped);
-      if (mapped.length && !activeChat) {
-        setActiveChat(mapped[0].id);
-      }
-    } catch (error: any) {
-      console.error(
-        "Failed to fetch customer care chats:",
-        error.response?.data || error.message
-      );
-    }
-  };
-
-  const loadFromLocalStorage = () => {
-    let storedData: StoredData | null = null;
-    if (isLocalStorageAvailable()) {
+  const fetchConversations = useCallback(
+    async (isBackground = false) => {
+      if (!adminToken) return;
       try {
-        const data = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (data) {
-          storedData = JSON.parse(data);
-        }
-      } catch (error) {
-        console.error("Failed to load from localStorage:", error);
-      }
-    }
-
-    if (!storedData) {
-      storedData = loadFallback();
-    }
-
-    if (storedData) {
-      setChats(storedData.chats);
-      setActiveChat(storedData.activeChat);
-    } else {
-      initializeDefaultData();
-    }
-  };
-
-  const saveToLocalStorage = () => {
-    const dataToStore: StoredData = {
-      chats,
-      activeChat,
-    };
-    if (isLocalStorageAvailable()) {
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToStore));
-      } catch (error) {
-        console.error("Failed to save to localStorage:", error);
-        if (
-          error instanceof DOMException &&
-          (error.name === "QuotaExceededError" ||
-            error.name === "NS_ERROR_DOM_QUOTA_REACHED")
-        ) {
-          showFeedback(
-            "Local storage is full. Your changes may not persist across sessions."
-          );
+        if (!isBackground) {
+          setLoading(true);
         } else {
-          showFeedback(
-            "Unable to save data locally. Your changes may not persist."
-          );
+          setIsBackgroundRefresh(true);
         }
-        saveFallback(dataToStore);
-      }
-    } else {
-      console.warn("localStorage is not available. Using fallback storage.");
-      saveFallback(dataToStore);
-      showFeedback(
-        "Unable to use local storage. Your changes may not persist across sessions."
-      );
-    }
-  };
-
-  const saveFallback = (data: StoredData) => {
-    try {
-      fallbackStorage.current.set(LOCAL_STORAGE_KEY, JSON.stringify(data));
-    } catch (error) {
-      console.error("Failed to save to fallback storage:", error);
-      showFeedback("Unable to save data. Your changes may not persist.");
-    }
-  };
-
-  const loadFallback = (): StoredData | null => {
-    const data = fallbackStorage.current.get(LOCAL_STORAGE_KEY);
-    if (data) {
-      try {
-        return JSON.parse(data);
-      } catch (error) {
-        console.error("Failed to parse fallback data:", error);
-        return null;
-      }
-    }
-    return null;
-  };
-
-  const initializeDefaultData = () => {
-    const defaultChats: Chat[] = [
-      {
-        id: "1",
-        name: "Ricky Smith",
-        avatar:
-          "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202025-02-11%20170005-w7p56CC6KmLQ43N0vioZq5pqM0k03k.png",
-        lastMessage: "Hi!, How are You? 👋",
-        timestamp: "2 min ago",
-        isVendor: true,
-        isOnline: true,
-        unreadCount: 3,
-        messages: [
+        const res = await axios.get(
+          `${API_CHAT_BASE_URL}/customer_care_messages`,
           {
-            id: "1",
-            content: "Hi!, How are You? 👋",
-            sender: "Ricky Smith",
-            timestamp: "11:00AM",
-            isVendor: true,
-            deletedFor: "none",
+            headers: {
+              Authorization: `Bearer ${adminToken}`,
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+            },
           },
-        ],
-      },
-      {
-        id: "2",
-        name: "Sarah Johnson",
-        avatar: "",
-        lastMessage: "When will my order arrive?",
-        timestamp: "30 min ago",
-        isVendor: false,
-        isOnline: false,
-        unreadCount: 1,
-        messages: [
-          {
-            id: "1",
-            content: "When will my order arrive?",
-            sender: "Sarah Johnson",
-            timestamp: "10:30AM",
-            isVendor: false,
-            deletedFor: "none",
-          },
-        ],
-      },
-    ];
-    setChats(defaultChats);
-    setActiveChat("1");
-  };
+        );
 
-  const activeMessages =
-    chats.find((chat) => chat.id === activeChat)?.messages || [];
-  const activeChatDetails = chats.find((chat) => chat.id === activeChat);
-  const pinnedMessage = activeChatDetails?.messages.find(
-    (msg) => msg.id === activeChatDetails.pinnedMessageId
+        const formattedConversations: Conversation[] = res.data.chats
+          .map((item: any) => {
+            try {
+              const participant = Array.isArray(item.participants)
+                ? item.participants.find(
+                    (p: any) =>
+                      (p?.model === "users" || p?.model === "vendors") &&
+                      p?.details &&
+                      p.details._id !== item.customerCare,
+                  )
+                : null;
+              if (!item || typeof item !== "object") {
+                console.warn("Invalid chat item:", item);
+                return null;
+              }
+              let participantName = "Customer";
+              if (participant?.details) {
+                if (participant.model === "vendors") {
+                  participantName = participant.details.storeName || "Vendor";
+                } else {
+                  participantName =
+                    participant.details.name ||
+                    participant.details.email?.split("@")[0] ||
+                    "Customer";
+                }
+              }
+              return {
+                id:
+                  item._id || `chat-${Math.random().toString(36).substr(2, 9)}`,
+                name: participantName,
+                userType:
+                  participant?.model === "vendors"
+                    ? "Vendor"
+                    : participant?.model === "users"
+                      ? "User"
+                      : "Customer Care",
+                lastMessage: item.lastMessage?.content
+                  ? String(item.lastMessage.content).substring(0, 50) +
+                    (String(item.lastMessage.content).length > 50 ? "..." : "")
+                  : "No messages yet",
+                time: item.updatedAt
+                  ? new Date(item.updatedAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : new Date().toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                unread: item.lastMessage?.isRead === false ? 1 : 0,
+              };
+            } catch (err) {
+              console.error("Error formatting conversation:", err, item);
+              return null;
+            }
+          })
+          .filter(
+            (conv: Conversation | null): conv is Conversation => conv !== null,
+          );
+        setConversations(formattedConversations);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching conversations:", err);
+        if (!isBackground) {
+          setError("Failed to load conversations. Please try again later.");
+        }
+      } finally {
+        if (!isBackground) {
+          setLoading(false);
+        } else {
+          setIsBackgroundRefresh(false);
+        }
+      }
+    },
+    [adminToken],
   );
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [chats, activeChat]);
+  const fetchMessages = useCallback(
+    async (chatId: string, isBackground = false) => {
+      if (!adminToken || !chatId) return;
+      try {
+        if (!isBackground) {
+          setMessagesLoading(true);
+        }
+        const res = await axios.get(
+          `${API_CHAT_BASE_URL}/customer_care_chatmessages/${chatId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${adminToken}`,
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+            },
+          },
+        );
 
+        if (res.data.success && res.data.messages) {
+          setMessages(res.data.messages);
+          setTimeout(scrollToBottom, 100);
+        }
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching messages:", err);
+        if (!isBackground) {
+          setError("Failed to load messages. Please try again.");
+        }
+      } finally {
+        if (!isBackground) {
+          setMessagesLoading(false);
+        }
+      }
+    },
+    [adminToken],
+  );
+
+  // Initialize Socket.IO connection
+  useEffect(() => {
+    // Only initialize Socket.IO if we have an admin token
+    if (adminToken) {
+      // Close existing connection if any
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+
+      // Create new Socket.IO connection
+      socketRef.current = io(SOCKET_SERVER_URL, {
+        auth: {
+          token: adminToken,
+        },
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
+
+      // Connection established
+      socketRef.current.on("connect", () => {
+        console.log("Socket.IO connected");
+        // Join the selected chat room if available
+        if (selectedChat) {
+          socketRef.current?.emit("joinChat", { chatId: selectedChat });
+        }
+      });
+
+      // Handle new messages
+      socketRef.current.on(
+        "customerCareMessage",
+        (data: { chatId: string; message: Message }) => {
+          if (data.chatId === selectedChat) {
+            // Add the new message to the current chat
+            setMessages((prev) => [...prev, data.message]);
+            // Scroll to bottom to show the new message
+            setTimeout(scrollToBottom, 100);
+          }
+          // Update conversation list when a new message is received in any chat
+          fetchConversations(true);
+        },
+      );
+
+      // Handle typing indicators
+      socketRef.current.on(
+        "typing",
+        (data: { chatId: string; isTyping: boolean; senderName: string }) => {
+          setTypingStatus((prev) => ({
+            ...prev,
+            [data.chatId]: {
+              isTyping: data.isTyping,
+              name: data.senderName,
+            },
+          }));
+
+          // Clear typing indicator after timeout
+          if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+          }
+
+          if (data.isTyping) {
+            typingTimeoutRef.current = setTimeout(() => {
+              setTypingStatus((prev) => ({
+                ...prev,
+                [data.chatId]: {
+                  isTyping: false,
+                  name: "",
+                },
+              }));
+            }, TYPING_INDICATOR_TIMEOUT);
+          }
+        },
+      );
+
+      // Handle connection errors
+      socketRef.current.on("connect_error", (error) => {
+        console.error("Socket.IO connection error:", error);
+      });
+
+      // Handle disconnection
+      socketRef.current.on("disconnect", (reason) => {
+        console.log("Socket.IO disconnected:", reason);
+      });
+
+      // Clean up on unmount
+      return () => {
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+          socketRef.current = null;
+        }
+      };
+    }
+  }, [adminToken, selectedChat, fetchConversations]);
+
+  // Initial load effect - runs only once on component mount
+  useEffect(() => {
+    fetchConversations();
+
+    // Set up interval for background refresh
+    const interval = setInterval(() => {
+      fetchConversations(true);
+      if (selectedChat) {
+        fetchMessages(selectedChat, true);
+      }
+    }, REFRESH_INTERVAL);
+
+    // Clean up interval on component unmount
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [fetchConversations, fetchMessages]); // Removed selectedChat from dependencies
+
+  // Effect to handle chat selection changes
+  useEffect(() => {
+    if (selectedChat) {
+      fetchMessages(selectedChat);
+    }
+  }, [selectedChat, fetchMessages]); // Only runs when selectedChat changes
+
+  // Scroll to bottom of messages when messages change
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      const newFiles = Array.from(files).slice(0, 5); // Limit to 5 files
-      const fileReaders = newFiles.map((file) => {
-        return new Promise<{
-          type: "image" | "document";
-          url: string;
-          name: string;
-          size: number;
-        }>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve({
-              type: file.type.startsWith("image/") ? "image" : "document",
-              url: reader.result as string,
-              name: file.name,
-              size: file.size,
-            });
-          };
-          reader.readAsDataURL(file);
-        });
-      });
-
-      Promise.all(fileReaders).then((fileData) => {
-        const newMessage: Message = {
-          id: Date.now().toString(),
-          content: `Sent ${fileData.length} ${
-            fileData.length === 1 ? "file" : "files"
-          }`,
-          sender: "You",
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          isVendor: false,
-          files: fileData,
-          replyTo: replyingTo || undefined,
-          deletedFor: "none",
-        };
-        addMessageToChat(newMessage);
-        setReplyingTo(null);
-      });
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Small timeout to ensure the DOM has updated
+      const timer = setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+      return () => clearTimeout(timer);
     }
+  }, [messages]);
+  // Don't select first conversation by default
+  // User needs to explicitly select a conversation
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
   };
 
-  const handleVideoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const video = document.createElement("video");
-        video.src = URL.createObjectURL(file);
-        video.onloadedmetadata = () => {
-          const duration = Math.round(video.duration);
-          const minutes = Math.floor(duration / 60);
-          const seconds = duration % 60;
-          const durationString = `${minutes}:${seconds
-            .toString()
-            .padStart(2, "0")}`;
-
-          const newMessage: Message = {
-            id: Date.now().toString(),
-            content: `Video: ${file.name}`,
-            sender: "You",
-            timestamp: new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            isVendor: false,
-            files: [
-              {
-                type: "video",
-                url: reader.result as string,
-                name: file.name,
-                size: file.size,
-                duration: durationString,
-              },
-            ],
-            replyTo: replyingTo || undefined,
-            deletedFor: "none",
-          };
-          addMessageToChat(newMessage);
-          setReplyingTo(null);
-          URL.revokeObjectURL(video.src);
-        };
-      };
-      reader.readAsDataURL(file);
+  // Add this effect to scroll to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom();
     }
-  };
+  }, [messages, selectedChat]); // Re-run when messages or selectedChat changes
 
-  const handleEmojiSelect = (emoji: string) => {
-    setMessage((prev) => prev + emoji);
-  };
-
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        content: message,
-        sender: "You",
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        isVendor: false,
-        replyTo: replyingTo || undefined,
-        deletedFor: "none",
-      };
-      addMessageToChat(newMessage);
-      setMessage("");
-      setReplyingTo(null);
-      setShowEmojiPicker(false);
-    }
-  };
-
-  const addMessageToChat = (newMessage: Message) => {
-    setChats((prevChats) =>
-      prevChats.map((chat) => {
-        if (chat.id === activeChat) {
-          return {
-            ...chat,
-            messages: [...chat.messages, newMessage],
-            lastMessage: `You: ${newMessage.content.slice(0, 20)}${
-              newMessage.content.length > 20 ? "..." : ""
-            }`,
-            timestamp: "Just now",
-            unreadCount: 0, // Reset unread count when admin sends a message
-          };
-        } else if (newMessage.sender !== "You") {
-          // Increment unread count for other chats when receiving a message
-          return {
-            ...chat,
-            unreadCount: chat.unreadCount + 1,
-          };
-        }
-        return chat;
-      })
-    );
-  };
+  // Clean up typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleChatSelect = (chatId: string) => {
-    setActiveChat(chatId);
-    // Reset unread count when selecting a chat
-    setChats((prevChats) =>
-      prevChats.map((chat) =>
-        chat.id === chatId ? { ...chat, unreadCount: 0 } : chat
-      )
-    );
+    setSelectedChat(chatId);
+    fetchMessages(chatId);
+    if (isMobile) setMobileOpen(false);
   };
 
-  // ... (keep all other existing handler functions)
+  const handleTyping = useCallback(
+    (isTyping: boolean) => {
+      if (!selectedChat || !socketRef.current?.connected) return;
 
-  const handleForwardMessage = (targetChatId: string) => {
-    if (!forwardDialog.messageId) return;
-    const messageToForward = activeMessages.find(
-      (msg) => msg.id === forwardDialog.messageId
-    );
-    if (!messageToForward) return;
+      socketRef.current.emit("typing", {
+        chatId: selectedChat,
+        isTyping,
+        senderId: token?._id,
+        senderName: token?.name || "Admin",
+        senderModel: "admins",
+      });
+    },
+    [selectedChat, token?._id, token?.name],
+  );
 
-    setChats((prevChats) =>
-      prevChats.map((chat) => {
-        if (chat.id === targetChatId) {
-          const forwardedMessage: Message = {
-            ...messageToForward,
-            id: Date.now().toString(),
-            sender: "You",
-            timestamp: new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            replyTo: undefined,
-            isVendor: false,
-            deletedFor: "none",
-          };
-          return {
-            ...chat,
-            messages: [...chat.messages, forwardedMessage],
-            lastMessage: `You: ${forwardedMessage.content.slice(0, 20)}${
-              forwardedMessage.content.length > 20 ? "..." : ""
-            }`,
-            timestamp: "Just now",
-            unreadCount: 0,
-          };
-        }
-        return chat;
-      })
-    );
-    setForwardDialog({ isOpen: false, messageId: null });
-    showFeedback("Message forwarded!");
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+    // Only send typing start if user wasn't already typing
+    if (e.target.value.length === 1) {
+      handleTyping(true);
+    } else if (e.target.value.length === 0) {
+      handleTyping(false);
+    }
   };
 
-  const handleDeleteClick = (messageId: string) => {
-    setDeleteDialog({ isOpen: true, messageId });
-    setDeleteType("me");
-  };
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim() || !selectedChat || !adminToken || !socketRef.current)
+      return;
 
-  const handleDeleteCancel = () => {
-    setDeleteDialog({ isOpen: false, messageId: null });
-  };
+    // Notify that typing has stopped
+    handleTyping(false);
 
-  const handleDeleteConfirm = () => {
-    if (!deleteDialog.messageId) return;
-    setChats((prevChats) =>
-      prevChats.map((chat) => {
-        if (chat.id === activeChat) {
-          return {
-            ...chat,
-            messages: chat.messages.map((msg) =>
-              msg.id === deleteDialog.messageId
-                ? {
-                    ...msg,
-                    deletedFor: deleteType === "everyone" ? "everyone" : "me",
-                  }
-                : msg
-            ),
-          };
-        }
-        return chat;
-      })
-    );
-    setDeleteDialog({ isOpen: false, messageId: null });
-  };
+    const tempMessageId = `temp-${Date.now()}`;
+    const newMessage = {
+      _id: tempMessageId,
+      content: message,
+      sender: {
+        _id: token?._id,
+        name: token?.name,
+        email: "support@example.com",
+      },
+      senderModel: "admins",
+      isRead: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-  const handleReply = (messageId: string) => {
-    setReplyingTo(messageId);
-    setShowEmojiPicker(false);
-    setEditingMessageId(null);
-  };
+    try {
+      // Optimistically update the UI
+      setMessages((prev) => [...prev, newMessage]);
+      setMessage("");
 
-  const handleForward = (messageId: string) => {
-    setForwardDialog({ isOpen: true, messageId });
-  };
+      // Send the message via Socket.IO
+      socketRef.current.emit("customerCareMessage", {
+        chatId: selectedChat,
+        content: message,
+        tempId: tempMessageId,
+      });
 
-  const handleCopyText = (text: string) => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(
-        () => showFeedback("Copied to clipboard!"),
-        () => showFeedback("Failed to copy text.")
-      );
-    } else {
-      // Fallback for older browsers
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      document.body.appendChild(textarea);
-      textarea.select();
+      // Also send to the REST API as a fallback
       try {
-        document.execCommand("copy");
-        showFeedback("Copied to clipboard!");
-      } catch {
-        showFeedback("Failed to copy text.");
+        await axios.post(
+          `${API_CHAT_BASE_URL}/send-message`,
+          {
+            chatId: selectedChat,
+            content: message,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${adminToken}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      } catch (apiError) {
+        console.error("Error sending message via REST API:", apiError);
+        // Don't show error to user as Socket.IO might have worked
       }
-      document.body.removeChild(textarea);
-    }
-  };
-
-  const handlePin = (messageId: string) => {
-    setChats((prevChats) =>
-      prevChats.map((chat) => {
-        if (chat.id === activeChat) {
-          const isCurrentlyPinned = chat.pinnedMessageId === messageId;
-          return {
-            ...chat,
-            pinnedMessageId: isCurrentlyPinned ? undefined : messageId,
-            messages: chat.messages.map((msg) =>
-              msg.id === messageId
-                ? { ...msg, isPinned: !isCurrentlyPinned }
-                : { ...msg, isPinned: false }
-            ),
-          };
-        }
-        return chat;
-      })
-    );
-  };
-
-  const handleEdit = (messageId: string) => {
-    setEditingMessageId(messageId);
-    const msg = activeMessages.find((m) => m.id === messageId);
-    if (msg) {
-      setMessage(msg.content);
-    }
-  };
-
-  const handleSaveEdit = () => {
-    if (!editingMessageId) return;
-    setChats((prevChats) =>
-      prevChats.map((chat) => {
-        if (chat.id === activeChat) {
-          return {
-            ...chat,
-            messages: chat.messages.map((msg) =>
-              msg.id === editingMessageId
-                ? {
-                    ...msg,
-                    content: message,
-                    isEdited: true,
-                  }
-                : msg
-            ),
-            lastMessage: `You: ${message.slice(0, 20)}${
-              message.length > 20 ? "..." : ""
-            }`,
-            timestamp: "Just now",
-          };
-        }
-        return chat;
-      })
-    );
-    setEditingMessageId(null);
-    setMessage("");
-    setShowEmojiPicker(false);
-  };
-
-  const handleViewImages = (
-    images: { url: string; name: string }[],
-    index: number = 0
-  ) => {
-    setImageViewer({
-      isOpen: true,
-      images,
-      currentIndex: index,
-    });
-  };
-
-  const handleNextImage = () => {
-    setImageViewer((prev) => ({
-      ...prev,
-      currentIndex: (prev.currentIndex + 1) % prev.images.length,
-    }));
-  };
-
-  const handlePrevImage = () => {
-    setImageViewer((prev) => ({
-      ...prev,
-      currentIndex:
-        (prev.currentIndex - 1 + prev.images.length) % prev.images.length,
-    }));
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + " bytes";
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
-    else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + " MB";
-    else return (bytes / 1073741824).toFixed(1) + " GB";
-  };
-
-  const showFeedback = (message: string) => {
-    setFeedbackMessage(message);
-    setTimeout(() => setFeedbackMessage(null), 3000);
-  };
-
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-  };
-
-  const handlePlayVideo = (videoUrl: string) => {
-    setVideoPlayer({
-      isOpen: true,
-      videoUrl,
-    });
-    setIsPlaying(true);
-    setCurrentTime(0);
-    setDuration(0);
-    setIsMuted(false);
-  };
-
-  const handleToggleMute = () => {
-    setIsMuted((prev) => {
-      const newMuted = !prev;
-      if (videoRef.current) {
-        videoRef.current.muted = newMuted;
-      }
-      return newMuted;
-    });
-  };
-
-  const handleSaveVideo = (videoUrl: string) => {
-    // Download the video file
-    const link = document.createElement("a");
-    link.href = videoUrl;
-    link.download = "video.mp4";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showFeedback("Video saved!");
-  };
-
-  const handlePlayPause = () => {
-    if (videoRef.current) {
-      if (videoRef.current.paused) {
-        videoRef.current.play();
-        setIsPlaying(true);
-      } else {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      }
-    }
-  };
-
-  const handleCloseVideoPlayer = () => {
-    setVideoPlayer({
-      isOpen: false,
-      videoUrl: null,
-    });
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setDuration(0);
-    setIsMuted(false);
-  };
-
-  const handleToggleFullscreen = () => {
-    if (videoRef.current) {
-      const videoElement = videoRef.current;
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        if (videoElement.requestFullscreen) {
-          videoElement.requestFullscreen();
-        } else if ((videoElement as any).webkitRequestFullscreen) {
-          (videoElement as any).webkitRequestFullscreen();
-        } else if ((videoElement as any).mozRequestFullScreen) {
-          (videoElement as any).mozRequestFullScreen();
-        } else if ((videoElement as any).msRequestFullscreen) {
-          (videoElement as any).msRequestFullscreen();
-        }
-      }
+    } catch (err) {
+      console.error("Error sending message:", err);
+      // Remove the optimistic update if there's an error
+      setMessages((prev) => prev.filter((msg) => msg._id !== tempMessageId));
+      setError("Failed to send message. Please try again.");
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Chat List Sidebar */}
-      <motion.div
-        initial={{ x: -300, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        className="bg-white border-r w-80"
+    <Box
+      sx={{
+        display: "flex",
+        height: "79vh",
+        width: "100%",
+        overflow: "hidden",
+      }}
+    >
+      {/* Conversations List */}
+      <Box
+        sx={{
+          width: { xs: "100%", md: "350px" },
+          borderRight: "1px solid",
+          borderColor: "divider",
+          display: { xs: mobileOpen ? "block" : "none", md: "block" },
+          bgcolor: "background.paper",
+          height: "100%",
+          overflowY: "auto",
+          flexShrink: 0,
+        }}
       >
-        <div className="p-4 border-b">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-bold">Chats</h1>
-            <motion.button className="p-2 rounded-full hover:bg-gray-100">
-              <Plus className="w-5 h-5" />
-            </motion.button>
-          </div>
-          <div className="relative">
-            <Search className="absolute w-5 h-5 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
-            <input
-              type="text"
-              placeholder="Search message"
-              className="w-full py-2 pl-10 pr-4 text-sm bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500"
+        <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Typography variant="h6">Customer Support</Typography>
+          <Box sx={{ mt: 1 }}>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="Search conversations..."
+              InputProps={{
+                startAdornment: (
+                  <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />
+                ),
+              }}
+              sx={{
+                outline: "#F25E40",
+              }}
             />
-          </div>
-        </div>
-        <div className="overflow-y-auto h-[calc(100vh-120px)]">
-          <AnimatePresence>
-            {chats.map((chat) => (
-              <motion.button
-                key={chat.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                whileHover={{ backgroundColor: "rgba(0,0,0,0.05)" }}
-                onClick={() => handleChatSelect(chat.id)}
-                className={`w-full p-4 flex items-start gap-3 border-b relative ${
-                  activeChat === chat.id ? "bg-orange-50" : ""
-                }`}
-              >
-                <div className="relative">
-                  <img
-                    src={chat.avatar || "/placeholder.svg"}
-                    alt={chat.name}
-                    className="w-12 h-12 rounded-full"
-                  />
-                  {chat.isOnline && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
-                  )}
-                </div>
-                <div className="flex-1 text-left">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold">{chat.name}</p>
-                      <span className="text-xs text-orange-500">
-                        {chat.isVendor ? "Vendor" : "Customer"}
-                      </span>
-                    </div>
-                    <span className="text-xs text-gray-500">
-                      {chat.timestamp}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-gray-500 truncate">
-                    {chat.lastMessage}
-                  </p>
-                </div>
-                {chat.unreadCount > 0 && (
-                  <span className="absolute px-2 py-1 text-xs font-bold text-white transform -translate-y-1/2 bg-orange-500 rounded-full right-4 top-1/2">
-                    {chat.unreadCount}
-                  </span>
-                )}
-              </motion.button>
-            ))}
-          </AnimatePresence>
-        </div>
-      </motion.div>
-
-      {/* Chat Area */}
-      <div className="flex flex-col flex-1">
-        {activeChat ? (
-          <>
-            {/* Chat Header */}
-            {activeChatDetails && (
-              <motion.div
-                initial={{ y: -50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="flex items-center gap-3 p-4 bg-white border-b"
-              >
-                <div className="relative">
-                  <img
-                    src={activeChatDetails.avatar || "/placeholder.svg"}
-                    alt={activeChatDetails.name}
-                    className="w-10 h-10 rounded-full"
-                  />
-                  {activeChatDetails.isOnline && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
-                  )}
-                </div>
-                <div>
-                  <h2 className="font-semibold">{activeChatDetails.name}</h2>
-                  <span className="text-xs text-green-500">
-                    {activeChatDetails.isOnline ? "Online" : "Offline"}
-                  </span>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Pinned Message */}
-            {pinnedMessage && (
-              <div className="flex items-center justify-between p-2 bg-orange-100">
-                <div className="flex items-center gap-2">
-                  <Pin className="w-4 h-4 text-orange-500" />
-                  <p className="text-sm text-orange-700 truncate">
-                    {pinnedMessage.content}
-                  </p>
-                </div>
-                <motion.button
-                  onClick={() => handlePin(pinnedMessage.id)}
-                  className="text-orange-500 hover:text-orange-700"
-                >
-                  <X className="w-4 h-4" />
-                </motion.button>
-              </div>
-            )}
-
-            {/* Feedback Message */}
-            {feedbackMessage && (
-              <div className="p-2 text-center text-green-800 bg-green-100">
-                {feedbackMessage}
-              </div>
-            )}
-
-            {/* Messages */}
-            <div className="flex-1 p-4 overflow-y-auto">
-              <AnimatePresence>
-                {activeMessages.length > 0 ? (
-                  activeMessages
-                    .filter(
-                      (msg) =>
-                        msg.deletedFor !== "everyone" && msg.deletedFor !== "me"
-                    )
-                    .map((msg, index) => (
-                      <motion.div
-                        key={msg.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ delay: index * 0.1 }}
-                        className={`flex gap-3 mb-4 ${
-                          msg.isVendor ? "" : "justify-end"
-                        }`}
-                      >
-                        {msg.isVendor && activeChatDetails && (
-                          <img
-                            src={activeChatDetails.avatar || "/placeholder.svg"}
-                            alt={msg.sender}
-                            className="w-8 h-8 rounded-full"
-                          />
-                        )}
-                        <div
-                          className={`max-w-[70%] ${
-                            msg.isVendor ? "order-2" : "order-1"
-                          }`}
-                        >
-                          {msg.replyTo && (
-                            <div className="p-2 mb-1 text-sm text-gray-600 bg-gray-100 rounded-t-lg">
-                              Replying to:{" "}
-                              {activeMessages
-                                .find((m) => m.id === msg.replyTo)
-                                ?.content.slice(0, 50)}
-                              ...
-                            </div>
-                          )}
-                          <div
-                            className={`p-3 rounded-lg ${
-                              msg.isVendor
-                                ? "bg-white border"
-                                : "bg-orange-500 text-white"
-                            }`}
-                          >
-                            {msg.files && msg.files.length > 0 && (
-                              <div className="mb-2">
-                                {msg.files[0].type === "image" ? (
-                                  <div className="grid gap-2">
-                                    {msg.files.length <= 4 ? (
-                                      <div
-                                        className={`grid ${
-                                          msg.files.length === 1
-                                            ? "grid-cols-1"
-                                            : msg.files.length === 2
-                                            ? "grid-cols-2"
-                                            : "grid-cols-2"
-                                        } gap-2`}
-                                      >
-                                        {msg.files.map((file, i) => (
-                                          <div
-                                            key={i}
-                                            className="relative overflow-hidden rounded-lg cursor-pointer aspect-square"
-                                            onClick={() =>
-                                              handleViewImages(
-                                                msg
-                                                  .files!.filter(
-                                                    (f) => f.type === "image"
-                                                  )
-                                                  .map((f) => ({
-                                                    url: f.url,
-                                                    name: f.name,
-                                                  })),
-                                                i
-                                              )
-                                            }
-                                          >
-                                            <img
-                                              src={file.url}
-                                              alt={file.name}
-                                              className="object-cover w-full h-full"
-                                            />
-                                          </div>
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <div className="grid grid-cols-2 gap-2">
-                                        {msg.files
-                                          .slice(0, 4)
-                                          .map((file, i) => (
-                                            <div
-                                              key={i}
-                                              className="relative overflow-hidden rounded-lg cursor-pointer aspect-square"
-                                              onClick={() =>
-                                                handleViewImages(
-                                                  msg
-                                                    .files!.filter(
-                                                      (f) => f.type === "image"
-                                                    )
-                                                    .map((f) => ({
-                                                      url: f.url,
-                                                      name: f.name,
-                                                    })),
-                                                  i
-                                                )
-                                              }
-                                            >
-                                              <img
-                                                src={file.url}
-                                                alt={file.name}
-                                                className="object-cover w-full h-full"
-                                              />
-                                              {i === 3 &&
-                                                msg.files &&
-                                                msg.files.length > 4 && (
-                                                  <div className="absolute inset-0 flex items-center justify-center text-xl font-bold text-white bg-black bg-opacity-50">
-                                                    +{msg.files.length - 4}
-                                                  </div>
-                                                )}
-                                            </div>
-                                          ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : msg.files[0].type === "video" ? (
-                                  <div className="relative">
-                                    <div
-                                      className="relative overflow-hidden bg-black rounded-lg cursor-pointer"
-                                      onClick={() =>
-                                        msg.files &&
-                                        handlePlayVideo(msg.files[0].url)
-                                      }
-                                    >
-                                      <video
-                                        src={msg.files[0].url}
-                                        className="w-full"
-                                        poster={msg.files[0].url}
-                                      />
-                                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-                                        <Play className="w-12 h-12 text-white" />
-                                      </div>
-                                      <div className="absolute text-sm text-white bottom-2 left-2">
-                                        {msg.files[0].duration}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="flex flex-col gap-2">
-                                    {msg.files.map((file, i) => (
-                                      <div
-                                        key={i}
-                                        className="flex items-center gap-2 p-2 rounded bg-white/10"
-                                      >
-                                        <Paperclip className="w-4 h-4" />
-                                        <span>
-                                          {file.name} (
-                                          {formatFileSize(file.size)})
-                                        </span>
-                                        <button
-                                          onClick={() =>
-                                            window.open(file.url, "_blank")
-                                          }
-                                          className="ml-2 text-blue-500 hover:text-blue-700"
-                                        >
-                                          View
-                                        </button>
-                                        <a
-                                          href={file.url}
-                                          download={file.name}
-                                          className="ml-2 text-green-500 hover:text-green-700"
-                                        >
-                                          Download
-                                        </a>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            <p className="whitespace-pre-line">{msg.content}</p>
-                          </div>
-                          <div
-                            className={`flex items-center gap-1 mt-1 text-xs text-gray-500 ${
-                              msg.isVendor ? "justify-start" : "justify-end"
-                            }`}
-                          >
-                            {msg.timestamp}
-                            {msg.isEdited && (
-                              <span className="ml-1 text-gray-400">
-                                (edited)
-                              </span>
-                            )}
-                            <div className="flex gap-2 ml-2">
-                              <button
-                                onClick={() => handleReply(msg.id)}
-                                className="relative hover:text-orange-500 group"
-                              >
-                                <Reply className="w-4 h-4" />
-                                <span className="absolute px-2 py-1 text-xs text-white transition-opacity transform -translate-x-1/2 bg-gray-800 rounded opacity-0 bottom-full left-1/2 group-hover:opacity-100">
-                                  Reply
-                                </span>
-                              </button>
-                              <button
-                                onClick={() => handleCopyText(msg.content)}
-                                className="relative hover:text-orange-500 group"
-                              >
-                                <Copy className="w-4 h-4" />
-                                <span className="absolute px-2 py-1 text-xs text-white transition-opacity transform -translate-x-1/2 bg-gray-800 rounded opacity-0 bottom-full left-1/2 group-hover:opacity-100">
-                                  Copy
-                                </span>
-                              </button>
-                              <button
-                                onClick={() => handleForward(msg.id)}
-                                className="relative hover:text-orange-500 group"
-                              >
-                                <Forward className="w-4 h-4" />
-                                <span className="absolute px-2 py-1 text-xs text-white transition-opacity transform -translate-x-1/2 bg-gray-800 rounded opacity-0 bottom-full left-1/2 group-hover:opacity-100">
-                                  Forward
-                                </span>
-                              </button>
-                              {!msg.isVendor && (
-                                <>
-                                  <button
-                                    onClick={() => handleEdit(msg.id)}
-                                    className="relative hover:text-orange-500 group"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                    <span className="absolute px-2 py-1 text-xs text-white transition-opacity transform -translate-x-1/2 bg-gray-800 rounded opacity-0 bottom-full left-1/2 group-hover:opacity-100">
-                                      Edit
-                                    </span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteClick(msg.id)}
-                                    className="relative hover:text-orange-500 group"
-                                  >
-                                    <Trash className="w-4 h-4" />
-                                    <span className="absolute px-2 py-1 text-xs text-white transition-opacity transform -translate-x-1/2 bg-gray-800 rounded opacity-0 bottom-full left-1/2 group-hover:opacity-100">
-                                      Delete
-                                    </span>
-                                  </button>
-                                </>
-                              )}
-                              <button
-                                onClick={() => handlePin(msg.id)}
-                                className="relative hover:text-orange-500 group"
-                              >
-                                <Pin className="w-4 h-4" />
-                                <span className="absolute px-2 py-1 text-xs text-white transition-opacity transform -translate-x-1/2 bg-gray-800 rounded opacity-0 bottom-full left-1/2 group-hover:opacity-100">
-                                  {msg.isPinned ? "Unpin" : "Pin"}
-                                </span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                        {!msg.isVendor && (
-                          <img
-                            src="/placeholder.svg"
-                            alt="You"
-                            className="order-3 w-8 h-8 rounded-full"
-                          />
-                        )}
-                      </motion.div>
-                    ))
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="text-center"
-                    >
-                      <img
-                        src="https://media.giphy.com/media/3o7aCTPPm4OHfRLSH6/giphy.gif"
-                        alt="No messages"
-                        className="w-64 h-64 mx-auto"
-                      />
-                      <h3 className="mt-4 text-xl font-semibold">
-                        No messages yet
-                      </h3>
-                      <p className="text-gray-500">
-                        Start the conversation with {activeChatDetails?.name}
-                      </p>
-                    </motion.div>
-                  </div>
-                )}
-              </AnimatePresence>
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Reply Preview */}
-            {replyingTo && (
-              <div className="flex items-center justify-between p-2 bg-gray-100">
-                <p className="text-sm text-gray-600">
-                  Replying to:{" "}
-                  {activeMessages
-                    .find((m) => m.id === replyingTo)
-                    ?.content.slice(0, 50)}
-                  ...
-                </p>
-                <motion.button
-                  onClick={() => setReplyingTo(null)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-4 h-4" />
-                </motion.button>
-              </div>
-            )}
-
-            {/* Message Input */}
-            <motion.div
-              initial={{ y: 50, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="relative p-4 bg-white border-t"
+          </Box>
+        </Box>
+        <List>
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : error ? (
+            <Typography color="error" sx={{ p: 2, textAlign: "center" }}>
+              {error}
+            </Typography>
+          ) : conversations.length === 0 ? (
+            <Typography
+              sx={{ p: 2, textAlign: "center", color: "text.secondary" }}
             >
-              <div className="flex items-center gap-2">
-                <motion.input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  onChange={handleFileUpload}
-                  multiple
-                  accept="image/*"
-                />
-                <motion.input
-                  type="file"
-                  ref={videoInputRef}
-                  className="hidden"
-                  accept="video/*"
-                  onChange={handleVideoUpload}
-                />
-                <motion.button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-2 rounded-full hover:bg-gray-100"
-                >
-                  <Paperclip className="w-5 h-5 text-gray-500" />
-                </motion.button>
-                <motion.button
-                  onClick={() => videoInputRef.current?.click()}
-                  className="p-2 rounded-full hover:bg-gray-100"
-                >
-                  <Video className="w-5 h-5 text-gray-500" />
-                </motion.button>
-
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder={
-                      editingMessageId
-                        ? "Edit message..."
-                        : "Write Something..."
-                    }
-                    className="w-full py-2 pl-4 pr-10 text-sm bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    onKeyPress={(e) =>
-                      e.key === "Enter" &&
-                      (editingMessageId
-                        ? handleSaveEdit()
-                        : handleSendMessage())
-                    }
-                  />
-                  <motion.button
-                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className="absolute p-1 transform -translate-y-1/2 rounded-full right-10 top-1/2 hover:bg-gray-200"
+              No conversations found
+            </Typography>
+          ) : (
+            conversations.map((conversation) => (
+              <React.Fragment key={conversation.id}>
+                <ListItem disablePadding sx={{ display: "block" }}>
+                  <ListItemButton
+                    selected={selectedChat === conversation.id}
+                    onClick={() => handleChatSelect(conversation.id)}
+                    sx={{
+                      "&.Mui-selected": {
+                        backgroundColor: "action.selected",
+                        "&:hover": {
+                          backgroundColor: "action.selected",
+                        },
+                      },
+                    }}
                   >
-                    <Smile className="w-5 h-5 text-gray-500" />
-                  </motion.button>
-                  <motion.button
-                    onClick={
-                      editingMessageId ? handleSaveEdit : handleSendMessage
-                    }
-                    className="absolute p-1 text-white transform -translate-y-1/2 bg-orange-500 rounded-full right-2 top-1/2 hover:bg-orange-600"
-                  >
-                    <SendIcon className="w-5 h-5" />
-                  </motion.button>
-                </div>
-              </div>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        width: "100%",
+                        alignItems: "center",
+                      }}
+                    >
+                      <StyledBadge
+                        overlap="circular"
+                        anchorOrigin={{
+                          vertical: "bottom",
+                          horizontal: "right",
+                        }}
+                        variant="dot"
+                        sx={{ mr: 2 }}
+                      >
+                        <Avatar>{conversation.name.charAt(0)}</Avatar>
+                      </StyledBadge>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <Typography noWrap sx={{ fontWeight: "medium" }}>
+                            {conversation.name}
+                            <Typography
+                              component="span"
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ ml: 1 }}
+                            >
+                              ({conversation.userType})
+                            </Typography>
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {conversation.time}
+                          </Typography>
+                        </Box>
+                        <Typography
+                          noWrap
+                          variant="body2"
+                          color="text.secondary"
+                        >
+                          {conversation.lastMessage}
+                        </Typography>
+                      </Box>
+                      {conversation.unread > 0 && (
+                        <Box sx={{ ml: 2 }}>
+                          <Badge
+                            color="primary"
+                            badgeContent={conversation.unread}
+                            sx={{
+                              display: "flex",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              "& .MuiBadge-badge": {
+                                backgroundColor: "#F25E40",
+                                color: "white",
+                                border: "2px solid white",
+                              },
+                            }}
+                          />
+                        </Box>
+                      )}
+                    </Box>
+                  </ListItemButton>
+                </ListItem>
+                <Divider component="li" />
+              </React.Fragment>
+            ))
+          )}
+        </List>
+      </Box>
 
-              {/* Emoji Picker */}
-              {showEmojiPicker && (
-                <div className="absolute right-0 mb-2 bg-white border rounded-lg shadow-lg bottom-full">
-                  <EmojiPicker
-                    onEmojiClick={(emojiObject) =>
-                      handleEmojiSelect(emojiObject.emoji)
-                    }
-                    autoFocusSearch={false}
-                  />
-                </div>
+      {/* Main Chat Area */}
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          overflow: "hidden",
+          position: "relative",
+          bgcolor: "#f5f5f5",
+        }}
+      >
+        {selectedChat ? (
+          <>
+            <AppBar
+              position="static"
+              color="default"
+              elevation={0}
+              sx={{
+                bgcolor: "background.paper",
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                zIndex: theme.zIndex.drawer + 1,
+                position: "relative",
+                boxShadow: "none",
+                display: "flex",
+              }}
+            >
+              <Toolbar>
+                <IconButton
+                  color="inherit"
+                  aria-label="open drawer"
+                  edge="start"
+                  onClick={handleDrawerToggle}
+                  sx={{ mr: 2 }}
+                >
+                  <MenuIcon />
+                </IconButton>
+                <Box sx={{ display: "flex", alignItems: "center", flex: 1 }}>
+                  <Avatar sx={{ mr: 2 }}>
+                    {conversations
+                      .find((c) => c.id === selectedChat)
+                      ?.name.charAt(0) || "U"}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="subtitle1" noWrap>
+                      {conversations.find((c) => c.id === selectedChat)?.name ||
+                        "User"}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" noWrap>
+                      Online
+                    </Typography>
+                  </Box>
+                </Box>
+              </Toolbar>
+            </AppBar>
+
+            <Box sx={{ flex: 1, overflowY: "auto", p: 2, bgcolor: "#f5f5f5" }}>
+              {messagesLoading ? (
+                <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : messages.length === 0 ? (
+                <Typography
+                  sx={{ textAlign: "center", color: "text.secondary", mt: 4 }}
+                >
+                  No messages yet. Start the conversation!
+                </Typography>
+              ) : (
+                messages.map((msg) => {
+                  // Ensure we have a valid message object
+                  if (!msg || typeof msg !== "object" || Array.isArray(msg)) {
+                    console.warn("Invalid message format, skipping:", msg);
+                    return null;
+                  }
+
+                  // Safely extract message properties with defaults
+                  const messageId = msg._id
+                    ? String(msg._id)
+                    : `msg-${Math.random().toString(36).substr(2, 9)}`;
+                  const content = msg.content ? String(msg.content) : "";
+                  const senderModel = msg.senderModel
+                    ? String(msg.senderModel)
+                    : "";
+                  const messageTime = msg.createdAt
+                    ? new Date(msg.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : "";
+
+                  // Skip rendering if we don't have valid content
+                  if (!content) {
+                    console.warn("Message has no content, skipping:", msg);
+                    return null;
+                  }
+
+                  return (
+                    <Box
+                      key={messageId}
+                      sx={{
+                        display: "flex",
+                        justifyContent:
+                          senderModel === "admins" ? "flex-end" : "flex-start",
+                        mb: 2,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          maxWidth: "70%",
+                          p: 2,
+                          borderRadius: 2,
+                          bgcolor:
+                            senderModel === "admins"
+                              ? "#F25E40"
+                              : "background.paper",
+                          color:
+                            senderModel === "admins"
+                              ? "common.white"
+                              : "text.primary",
+                          boxShadow: 1,
+                        }}
+                      >
+                        <Typography variant="body1">{content}</Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: "block",
+                            textAlign: "right",
+                            mt: 0.5,
+                            color:
+                              senderModel === "admins"
+                                ? "rgba(255, 255, 255, 0.7)"
+                                : "text.secondary",
+                          }}
+                        >
+                          {messageTime}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })
               )}
-            </motion.div>
+              <div ref={messagesEndRef} />
+            </Box>
+
+            <Box
+              sx={{
+                p: 1,
+                borderTop: "1px solid",
+                borderColor: "divider",
+                bgcolor: "background.paper",
+              }}
+            >
+              <form onSubmit={handleSendMessage}>
+                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                  <Box sx={{ width: "100%", position: "relative" }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Type a message..."
+                      value={message}
+                      onChange={handleInputChange}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage(e);
+                        }
+                      }}
+                      onBlur={() => handleTyping(false)}
+                      variant="outlined"
+                      multiline
+                      maxRows={3}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 2,
+                          borderColor: "#F25E40",
+                          padding: "8px 12px",
+                          minHeight: "40px",
+                          "& textarea": {
+                            padding: "4px 0",
+                          },
+                        },
+                      }}
+                    />
+                    {typingStatus[selectedChat!]?.isTyping && (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          bottom: "100%",
+                          left: 0,
+                          mb: 1,
+                          p: 1,
+                          bgcolor: "background.paper",
+                          borderRadius: 1,
+                          boxShadow: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                        }}
+                      >
+                        <Typography variant="caption" color="text.secondary">
+                          {typingStatus[selectedChat!].name} is typing
+                        </Typography>
+                        <Box sx={{ display: "flex", gap: 0.5 }}>
+                          <Box
+                            sx={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              bgcolor: "text.secondary",
+                              animation: "pulse 1.5s infinite",
+                              animationDelay: "0s",
+                              "@keyframes pulse": {
+                                "0%, 100%": {
+                                  opacity: 0.3,
+                                  transform: "translateY(0)",
+                                },
+                                "50%": {
+                                  opacity: 1,
+                                  transform: "translateY(-3px)",
+                                },
+                              },
+                            }}
+                          />
+                          <Box
+                            sx={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              bgcolor: "text.secondary",
+                              animation: "pulse 1.5s infinite",
+                              animationDelay: "0.2s",
+                              "@keyframes pulse": {
+                                "0%, 100%": {
+                                  opacity: 0.3,
+                                  transform: "translateY(0)",
+                                },
+                                "50%": {
+                                  opacity: 1,
+                                  transform: "translateY(-3px)",
+                                },
+                              },
+                            }}
+                          />
+                          <Box
+                            sx={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: "50%",
+                              bgcolor: "text.secondary",
+                              animation: "pulse 1.5s infinite",
+                              animationDelay: "0.4s",
+                              "@keyframes pulse": {
+                                "0%, 100%": {
+                                  opacity: 0.3,
+                                  transform: "translateY(0)",
+                                },
+                                "50%": {
+                                  opacity: 1,
+                                  transform: "translateY(-3px)",
+                                },
+                              },
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="primary"
+                    disabled={!message.trim()}
+                    sx={{
+                      minWidth: "40px",
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "50%",
+                      p: 0,
+                      minHeight: "40px",
+                      backgroundColor: "#F25E40",
+                    }}
+                  >
+                    <SendIcon />
+                  </Button>
+                </Box>
+              </form>
+            </Box>
           </>
         ) : (
-          <div className="flex items-center justify-center flex-1">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center"
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              textAlign: "center",
+              p: 3,
+              bgcolor: "#f5f5f5",
+              borderRadius: 1,
+            }}
+          >
+            <Box
+              sx={{
+                width: "100%",
+                maxWidth: "400px",
+                p: 4,
+                bgcolor: "background.paper",
+                borderRadius: 2,
+                boxShadow: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+              }}
             >
-              <img
-                src="https://media.giphy.com/media/3o7aCTPPm4OHfRLSH6/giphy.gif"
-                alt="Select a chat"
-                className="w-64 h-64 mx-auto"
+              <InboxIcon
+                sx={{ fontSize: 48, color: "text.secondary", opacity: 0.6 }}
               />
-              <h3 className="mt-4 text-xl font-semibold">No chat selected</h3>
-              <p className="text-gray-500">
-                Select a chat from the sidebar to start messaging
-              </p>
-            </motion.div>
-          </div>
+              <Typography variant="h6" color="text.primary">
+                No conversation selected
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Select a conversation from the list to view messages or start a
+                new one
+              </Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                sx={{
+                  backgroundColor: "#F25E40",
+                }}
+                startIcon={<ChatIcon />}
+                onClick={() => {
+                  if (conversations.length > 0) {
+                    setSelectedChat(conversations[0].id);
+                  }
+                }}
+                disabled={conversations.length === 0}
+              >
+                Start Chatting
+              </Button>
+            </Box>
+          </Box>
         )}
-      </div>
-
-      {/* Delete Dialog */}
-      {deleteDialog.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="p-6 bg-white rounded-lg w-96">
-            <h3 className="mb-4 text-lg font-semibold">Delete message?</h3>
-            <p className="mb-4 text-sm text-gray-600">
-              You can delete messages for everyone or just for yourself.
-            </p>
-            <div className="mb-6 space-y-2">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="deleteType"
-                  value="me"
-                  checked={deleteType === "me"}
-                  onChange={() => setDeleteType("me")}
-                  className="mr-2"
-                />
-                <span>Delete for me</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="deleteType"
-                  value="everyone"
-                  checked={deleteType === "everyone"}
-                  onChange={() => setDeleteType("everyone")}
-                  className="mr-2"
-                />
-                <span>Delete for everyone</span>
-              </label>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={handleDeleteCancel}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Enhanced Video Player */}
-      {videoPlayer.isOpen && videoPlayer.videoUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
-          <div className="relative w-full max-w-4xl p-4 bg-white rounded-lg aspect-video">
-            <div className="absolute z-10 flex items-center gap-2 top-2 right-2">
-              <motion.button
-                onClick={() => handleSaveVideo(videoPlayer.videoUrl!)}
-                className="p-2 text-white bg-gray-800 rounded-full hover:bg-gray-700"
-              >
-                <Save className="w-5 h-5" />
-              </motion.button>
-              <motion.button
-                onClick={handleCloseVideoPlayer}
-                className="p-2 text-white bg-gray-800 rounded-full hover:bg-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </motion.button>
-            </div>
-            <div className="relative w-full h-full">
-              <video
-                ref={videoRef}
-                src={videoPlayer.videoUrl}
-                className="object-contain w-full h-full rounded-lg"
-                onClick={handlePlayPause}
-                controls
-              />
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black to-transparent">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handlePlayPause}
-                      className="p-2 text-white bg-gray-800 rounded-full hover:bg-gray-700"
-                    >
-                      {isPlaying ? (
-                        <Pause className="w-5 h-5" />
-                      ) : (
-                        <Play className="w-5 h-5" />
-                      )}
-                    </button>
-                    <button
-                      onClick={handleToggleMute}
-                      className="p-2 text-white bg-gray-800 rounded-full hover:bg-gray-700"
-                    >
-                      {isMuted ? (
-                        <VolumeX className="w-5 h-5" />
-                      ) : (
-                        <Volume2 className="w-5 h-5" />
-                      )}
-                    </button>
-                    <div className="text-sm text-white">
-                      {formatTime(currentTime)} / {formatTime(duration)}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <motion.button
-                      onClick={handleToggleFullscreen}
-                      className="p-2 text-white bg-gray-800 rounded-full hover:bg-gray-700"
-                    >
-                      <Maximize className="w-5 h-5" />
-                    </motion.button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Image Viewer */}
-      {imageViewer.isOpen && imageViewer.images.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
-          <div className="relative w-full max-w-4xl p-4 bg-white rounded-lg aspect-video">
-            <div className="absolute z-10 flex items-center gap-2 top-2 right-2">
-              <motion.button
-                onClick={() =>
-                  setImageViewer({
-                    isOpen: false,
-                    images: [],
-                    currentIndex: 0,
-                  })
-                }
-                className="p-2 text-white bg-gray-800 rounded-full hover:bg-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </motion.button>
-            </div>
-            <div className="relative w-full h-full">
-              <div className="flex items-center justify-center w-full h-full">
-                <img
-                  src={imageViewer.images[imageViewer.currentIndex].url}
-                  alt={imageViewer.images[imageViewer.currentIndex].name}
-                  className="object-contain max-w-full max-h-full"
-                />
-              </div>
-              {imageViewer.images.length > 1 && (
-                <>
-                  <motion.button
-                    onClick={handlePrevImage}
-                    className="absolute p-2 text-white transform -translate-y-1/2 bg-gray-800 rounded-full left-4 top-1/2 hover:bg-gray-700"
-                  >
-                    <ChevronRight className="w-5 h-5 rotate-180" />
-                  </motion.button>
-                  <motion.button
-                    onClick={handleNextImage}
-                    className="absolute p-2 text-white transform -translate-y-1/2 bg-gray-800 rounded-full right-4 top-1/2 hover:bg-gray-700"
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </motion.button>
-                  <div className="absolute left-0 right-0 flex justify-center bottom-4">
-                    <div className="px-3 py-1 text-sm text-white bg-gray-800 bg-opacity-50 rounded-full">
-                      {imageViewer.currentIndex + 1} /{" "}
-                      {imageViewer.images.length}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Forward Dialog */}
-      {forwardDialog.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="p-6 bg-white rounded-lg w-96">
-            <h3 className="mb-4 text-lg font-semibold">Forward Message</h3>
-            <div className="overflow-y-auto max-h-96">
-              {chats.map((chat) => (
-                <button
-                  key={chat.id}
-                  onClick={() => handleForwardMessage(chat.id)}
-                  className="flex items-center w-full gap-3 p-3 rounded-lg hover:bg-gray-100"
-                >
-                  <img
-                    src={chat.avatar || "/placeholder.svg"}
-                    alt={chat.name}
-                    className="w-10 h-10 rounded-full"
-                  />
-                  <div className="flex-1 text-left">
-                    <p className="font-semibold">{chat.name}</p>
-                    <span className="text-xs text-orange-500">
-                      {chat.isVendor ? "Vendor" : "Customer"}
-                    </span>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </button>
-              ))}
-            </div>
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={() =>
-                  setForwardDialog({ isOpen: false, messageId: null })
-                }
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      </Box>
+    </Box>
   );
-}
+};
+
+export default Inbox;
