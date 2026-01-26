@@ -1,10 +1,5 @@
 import { useEffect } from "react";
 import { ChevronDown } from "lucide-react";
-import { motion } from "framer-motion";
-// import { useSelector } from "react-redux";
-// import type { RootState } from "@/redux/store";
-// import { useQuery } from "@tanstack/react-query";
-// import { get_single_vendor } from "@/utils/vendorApi";
 
 interface SubSubCategory {
   name: string;
@@ -24,7 +19,6 @@ interface CategorySelectorProps {
   selectedCategories: string[];
   activeCategory: string;
   handleCategoryChange: (category: string) => void;
-  vendorPlan?: "Starter" | "Shelves" | "Counter" | "Shop" | "Premium";
   selectedSubCategory: string;
   setSelectedSubCategory: (subCategory: string) => void;
   selectedSubSubCategory: string;
@@ -34,10 +28,8 @@ interface CategorySelectorProps {
 }
 
 export default function CategorySelector({
-  selectedCategories,
   activeCategory,
   handleCategoryChange,
-  vendorPlan = "Starter",
   selectedSubCategory,
   setSelectedSubCategory,
   selectedSubSubCategory,
@@ -1831,11 +1823,7 @@ export default function CategorySelector({
     },
   ],
 }: CategorySelectorProps) {
-  const isUpgraded =
-    vendorPlan === "Shelves" ||
-    vendorPlan === "Counter" ||
-    vendorPlan === "Shop" ||
-    vendorPlan === "Premium";
+
   // const user = useSelector((state: any) => state.vendor);
   // const {} = useQuery({
   //   queryKey: ["vendor"],
@@ -1850,55 +1838,19 @@ export default function CategorySelector({
 
   // Reset subcategory and sub-subcategory when active category changes
   useEffect(() => {
-    if (onCategorySelect && currentCategory) {
-      // Find the first subcategory for the new category
-      const firstSubCategory =
-        activeCategoryObj?.subCategories?.[0]?.name || "";
+    if (currentCategory) {
+      const firstSubCategory = activeCategoryObj?.subCategories?.[0]?.name || "";
       setSelectedSubCategory(firstSubCategory);
       setSelectedSubSubCategory("");
     }
-  }, [
-    currentCategory,
-    activeCategoryObj,
-    setSelectedSubCategory,
-    setSelectedSubSubCategory,
-    onCategorySelect,
-  ]);
+  }, [currentCategory]);
 
   // Reset sub-subcategory when subcategory changes
   useEffect(() => {
     setSelectedSubSubCategory("");
-  }, [selectedSubCategory, setSelectedSubSubCategory]);
+  }, [selectedSubCategory]);
 
-  // If vendor hasn't upgraded, show the dropdown filter
-  if (!isUpgraded) {
-    return (
-      <div className="relative">
-        <motion.select
-          className="px-4 py-2 pr-8 bg-white border border-gray-300 rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500"
-          value={currentCategory}
-          onChange={(e) => handleCategoryChange(e.target.value)}
-          disabled // Disable for non-upgraded vendors to prevent changing category
-        >
-          <option value="">Filter by Category</option>
-          {selectedCategories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </motion.select>
-        <div className="absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 pointer-events-none">
-          <svg
-            className="w-4 h-4 fill-current"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-          >
-            <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-          </svg>
-        </div>
-      </div>
-    );
-  }
+  // Always show full category selector (no vendor restrictions)
 
   // For upgraded vendors, show the new category selection UI
   return (
@@ -1908,30 +1860,49 @@ export default function CategorySelector({
         {/* Main Category */}
         <div className="space-y-2">
           <label className="block text-sm font-medium">Product Category</label>
-          <motion.input
-            type="text"
-            className="w-full p-3 text-sm bg-gray-100 border rounded-lg sm:text-base"
-            value={currentCategory}
-            readOnly
-          />
+          <div className="relative">
+            <select
+              className="w-full p-3 pr-10 text-sm border rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500 sm:text-base"
+              value={currentCategory}
+              onChange={(e) => {
+                const val = e.target.value;
+                handleCategoryChange(val);
+                if (onCategorySelect) onCategorySelect(val);
+              }}
+            >
+              <option value="">Select Category</option>
+              {categoryData.map((cat) => (
+                <option key={cat.name} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+              <ChevronDown className="w-5 h-5 text-gray-500" />
+            </div>
+          </div>
         </div>
 
         {/* Subcategory Selection */}
         <div className="space-y-2">
           <label className="block text-sm font-medium">{currentCategory}</label>
           <div className="relative">
-            <motion.select
+            <select
               className="w-full p-3 pr-10 text-sm border rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500 sm:text-base"
               value={selectedSubCategory}
-              onChange={(e) => setSelectedSubCategory(e.target.value)}
+              onChange={(e) => {
+                console.log("Subcategory changed to:", e.target.value);
+                setSelectedSubCategory(e.target.value);
+                setSelectedSubSubCategory("");
+              }}
             >
               <option value="">Select Subcategory</option>
-              {activeCategoryObj?.subCategories.map((subCat) => (
+              {activeCategoryObj?.subCategories?.map((subCat) => (
                 <option key={subCat.name} value={subCat.name}>
                   {subCat.name}
                 </option>
               ))}
-            </motion.select>
+            </select>
             <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
               <ChevronDown className="w-5 h-5 text-gray-500" />
             </div>
@@ -1945,7 +1916,7 @@ export default function CategorySelector({
               {selectedSubCategory}
             </label>
             <div className="relative">
-              <motion.select
+              <select
                 className="w-full p-3 pr-10 text-sm border rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500 sm:text-base"
                 value={selectedSubSubCategory}
                 onChange={(e) => setSelectedSubSubCategory(e.target.value)}
@@ -1953,12 +1924,12 @@ export default function CategorySelector({
                 <option value="">Select {selectedSubCategory} Type</option>
                 {activeCategoryObj?.subCategories
                   .find((subCat) => subCat.name === selectedSubCategory)
-                  ?.subSubCategories.map((subSubCat) => (
+                  ?.subSubCategories?.map((subSubCat) => (
                     <option key={subSubCat.name} value={subSubCat.name}>
                       {subSubCat.name}
                     </option>
                   ))}
-              </motion.select>
+              </select>
               <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
                 <ChevronDown className="w-5 h-5 text-gray-500" />
               </div>
