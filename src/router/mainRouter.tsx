@@ -31,7 +31,7 @@ const PreviewInvoice = lazy(
 const EditVendorProfile = lazy(
   () => import("../components/VendorInfo/Setting/EditVendorProfile")
 );
-const Inbox = lazy(() => import("../components/VendorInfo/Inbox"));
+const Inbox = lazy(() => import("../components/VendorInfo/chat/Inbox"));
 const AllPost = lazy(
   () => import("../components/VendorInfo/Community&Res/AllPost")
 );
