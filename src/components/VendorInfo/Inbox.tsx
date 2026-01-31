@@ -432,13 +432,13 @@ const Inbox = () => {
 
   const handleTyping = useCallback(
     (isTyping: boolean) => {
-      if (!selectedChat || !socketRef.current?.connected) return;
+      if (!selectedChat || !socketRef.current?.connected || !token) return;
 
       socketRef.current.emit("typing", {
         chatId: selectedChat,
         isTyping,
-        senderId: token?._id,
-        senderName: token?.name || "Admin",
+        senderId: token._id || "",
+        senderName: token.name || "Admin",
         senderModel: "admins",
       });
     },
@@ -468,8 +468,8 @@ const Inbox = () => {
       _id: tempMessageId,
       content: message,
       sender: {
-        _id: token?._id,
-        name: token?.name,
+        _id: token._id || "",
+        name: token.name || "Admin",
         email: "support@example.com",
       },
       senderModel: "admins",
