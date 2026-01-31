@@ -105,10 +105,10 @@ const Inbox = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const adminToken = useSelector((state: RootState) => state.admin.token);
   const API_CHAT_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/admin";
-  const token = jwtDecode(adminToken as string) as {
+  const token = adminToken ? jwtDecode(adminToken as string) as {
     _id: string;
     name: string;
-  };
+  } : null;
   const REFRESH_INTERVAL = 10000; // 10 seconds
   const [isBackgroundRefresh, setIsBackgroundRefresh] = useState(false);
   console.log(isBackgroundRefresh);
@@ -122,7 +122,13 @@ const Inbox = () => {
 
   const fetchConversations = useCallback(
     async (isBackground = false) => {
-      if (!adminToken) return;
+      if (!adminToken) {
+        if (!isBackground) {
+          setLoading(false);
+          setError("Please log in to view conversations");
+        }
+        return;
+      }
       try {
         if (!isBackground) {
           setLoading(true);
@@ -219,7 +225,13 @@ const Inbox = () => {
 
   const fetchMessages = useCallback(
     async (chatId: string, isBackground = false) => {
-      if (!adminToken || !chatId) return;
+      if (!adminToken || !chatId) {
+        if (!isBackground) {
+          setMessagesLoading(false);
+          setError("Please log in to view messages");
+        }
+        return;
+      }
       try {
         if (!isBackground) {
           setMessagesLoading(true);
@@ -445,7 +457,7 @@ const Inbox = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || !selectedChat || !adminToken || !socketRef.current)
+    if (!message.trim() || !selectedChat || !adminToken || !socketRef.current || !token)
       return;
 
     // Notify that typing has stopped

@@ -92,7 +92,7 @@ const LoginAdmin = () => {
             {/* Sign Up Link */}
             <div className="hidden w-full text-end lg:block">
               <span className="text-gray-600">Don't have an account? </span>
-              <Link to="/" className="text-blue-500 hover:underline">
+              <Link to="/signup-admin" className="text-blue-500 hover:underline">
                 Sign up
               </Link>
             </div>
@@ -186,7 +186,7 @@ const LoginAdmin = () => {
               </motion.button>
               <div className="block my-2 text-left lg:hidden">
                 <span className="text-gray-600">Don't have an Account? </span>
-                <Link to={"/"} className="text-blue-500 hover:underline">
+                <Link to={"/signup-admin"} className="text-blue-500 hover:underline">
                   Sign up
                 </Link>
               </div>
