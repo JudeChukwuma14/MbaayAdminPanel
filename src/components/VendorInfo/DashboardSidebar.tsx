@@ -6,7 +6,7 @@ import {
   ShoppingCart,
   Users,
   DollarSign,
-  Settings,
+  UserRoundPen,
   Inbox,
   LogOutIcon,
   ChevronDown,
@@ -148,13 +148,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ darkMode }) => {
           Icon={DollarSign}
         />
         <NavItem
-          title="Settings"
-          subItems={["Edit Vendor Profile", "General Setting"]}
-          Icon={Settings}
+          title="Admin Profile"
+          to="admin-profile"
+          Icon={UserRoundPen}
         />
         <NavItem
           title="Community"
-          subItems={["All Post", "Profile", "Mbaay Community"]}
+          subItems={["All Post", "Mbaay Community"]}
           Icon={GroupIcon}
         />
       </>

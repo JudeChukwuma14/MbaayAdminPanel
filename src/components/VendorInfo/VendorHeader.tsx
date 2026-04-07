@@ -11,8 +11,13 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useSelector } from "react-redux";
 import { useDarkMode } from "../context/DarkModeContext";
-import { useMutation } from "@tanstack/react-query";
-import { broadcastMessage } from "@/services/adminApi";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  broadcastMessage,
+  getAdminNotifications,
+  markOneAsRead,
+  markAdminNotificationAsRead,
+} from "@/services/adminApi";
 import { toast } from "react-toastify";
 
 const VendorHeader: React.FC = () => {
@@ -59,55 +64,46 @@ const VendorHeader: React.FC = () => {
 
   const user = useSelector((state: any) => state.admin);
 
-  const notifications = [
-    {
-      id: 1,
-      message: "Giovanni Kamper commented on your post",
-      detail: "This Looks great!! Let's get started on it.",
-      date: "Sep 20, 2024",
-      time: "2:20pm",
-      avatar: "/path-to-avatar1.png",
+  const {
+    data: notificationsData,
+    isLoading: notificationsLoading,
+    refetch: refetchNotifications,
+  } = useQuery({
+    queryKey: ["admin-notifications"],
+    queryFn: () => getAdminNotifications(user?.token, { limit: 10 }),
+    enabled: Boolean(user?.token),
+  });
+
+  console.log("Notifications data:", notificationsData);
+
+  const markOneMutation = useMutation({
+    mutationFn: (notificationId: string) =>
+      markOneAsRead(notificationId, user?.admin?.id || user?.admin?._id),
+    onSuccess: () => {
+      refetchNotifications();
     },
-    {
-      id: 2,
-      message: "Kessler Vester started following you",
-      date: "Sep 20, 2024",
-      time: "2:20pm",
-      avatar: "/path-to-avatar2.png",
+    onError: (err: any) => {
+      console.error("Mark as read error:", err);
+      toast.error("Failed to mark as read", { position: "top-right" });
     },
-    {
-      id: 3,
-      message: "OKonkwo Hilary added your product on wishlist",
-      date: "Sep 20, 2024",
-      time: "2:20pm",
+  });
+
+  const markAllMutation = useMutation({
+    mutationFn: () =>
+      markAdminNotificationAsRead(user?.admin?.id || user?.admin?._id),
+    onSuccess: () => {
+      refetchNotifications();
+      toast.success("All notifications marked as read", {
+        position: "top-right",
+      });
     },
-    {
-      id: 3,
-      message: "OKonkwo Hilary added your product on wishlist",
-      date: "Sep 20, 2024",
-      time: "2:20pm",
+    onError: (err: any) => {
+      console.error("Mark all as read error:", err);
+      toast.error("Failed to mark all as read", { position: "top-right" });
     },
-    {
-      id: 3,
-      message: "OKonkwo Hilary added your product on wishlist",
-      date: "Sep 20, 2024",
-      time: "2:20pm",
-    },
-    {
-      id: 3,
-      message: "OKonkwo Hilary added your product on wishlist",
-      date: "Sep 20, 2024",
-      time: "2:20pm",
-    },
-    {
-      id: 1,
-      message: "Giovanni Kamper commented on your post",
-      detail: "This Looks great!! Let's get started on it.",
-      date: "Sep 20, 2024",
-      time: "2:20pm",
-      avatar: "/path-to-avatar1.png",
-    },
-  ];
+  });
+
+  const notifications = notificationsData?.notifications || [];
 
   return (
     <header
@@ -239,9 +235,9 @@ const VendorHeader: React.FC = () => {
             aria-label="Notifications"
           >
             <Bell className="text-gray-500" />
-            {notifications.length > 0 && (
+            {notifications.filter((n: any) => !n.isRead).length > 0 && (
               <span className="absolute flex items-center justify-center w-5 h-5 text-xs text-white bg-red-500 rounded-full -top-1 -right-1">
-                {notifications.length}
+                {notifications.filter((n: any) => !n.isRead).length}
               </span>
             )}
           </button>
@@ -250,7 +246,7 @@ const VendorHeader: React.FC = () => {
           <AnimatePresence>
             {showNotifications && (
               <motion.div
-                className={`absolute right-0 mt-2 w-80 shadow-lg rounded-lg overflow-hidden ${
+                className={`absolute right-0 mt-2 w-80 shadow-lg rounded-lg overflow-hidden z-50 ${
                   darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"
                 }`}
                 initial={{ opacity: 0, y: -10 }}
@@ -268,53 +264,75 @@ const VendorHeader: React.FC = () => {
                   </button>
                 </div>
                 <div className="overflow-y-auto max-h-64">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`flex items-start gap-3 p-4 border-b ${
-                        darkMode
-                          ? "border-gray-700 hover:bg-gray-700"
-                          : "hover:bg-gray-100"
-                      }`}
-                    >
-                      {notification.avatar ? (
-                        <img
-                          src={notification.avatar}
-                          alt="Avatar"
-                          className="w-10 h-10 rounded-full"
-                        />
-                      ) : (
+                  {notificationsLoading ? (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                      No notifications
+                    </div>
+                  ) : (
+                    notifications.map((notification: any) => (
+                      <div
+                        key={notification._id}
+                        className={`flex items-start gap-3 p-4 border-b ${
+                          darkMode
+                            ? "border-gray-700 hover:bg-gray-700"
+                            : "hover:bg-gray-100"
+                        } ${!notification.isRead ? "bg-blue-50" : ""}`}
+                      >
                         <div className="flex items-center justify-center w-10 h-10 font-bold text-white bg-orange-500 rounded-full">
-                          {notification.message[0]}
+                          {notification.sender?.name?.[0] ||
+                            notification.title?.[0] ||
+                            "N"}
                         </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="font-medium">{notification.message}</p>
-                        {notification.detail && (
+                        <div className="flex-1">
+                          <p className="font-medium">
+                            {notification.title || "Notification"} (
+                            {notification.type})
+                          </p>
                           <p
                             className={`text-sm ${
                               darkMode ? "text-gray-400" : "text-gray-500"
                             }`}
                           >
-                            {notification.detail}
+                            {notification.message}
                           </p>
+                          <span
+                            className={`text-xs ${
+                              darkMode ? "text-gray-500" : "text-gray-400"
+                            }`}
+                          >
+                            {new Date(notification.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        {!notification.isRead && (
+                          <button
+                            onClick={() =>
+                              markOneMutation.mutate(notification._id)
+                            }
+                            className="text-xs text-blue-500 hover:underline"
+                          >
+                            Mark read
+                          </button>
                         )}
-                        <span
-                          className={`text-xs ${
-                            darkMode ? "text-gray-500" : "text-gray-400"
-                          }`}
-                        >
-                          {notification.time} - {notification.date}
-                        </span>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
                 <div className="flex items-center justify-between p-4">
-                  <button className="text-orange-500">Mark as read</button>
-                  <button className="px-4 py-2 text-white bg-orange-500 rounded">
-                    View All Notifications
-                  </button>
+                  {notifications.filter((n: any) => !n.isRead).length > 0 && (
+                    <button
+                      onClick={() => markAllMutation.mutate()}
+                      className="text-orange-500"
+                      disabled={markAllMutation.isPending}
+                    >
+                      {markAllMutation.isPending
+                        ? "Marking..."
+                        : "Mark all as read"}
+                    </button>
+                  )}
                 </div>
               </motion.div>
             )}

@@ -11,45 +11,45 @@ const LoginAdmin = lazy(() => import("../components/auth/LoginAdmin"));
 const Dashboard = lazy(() => import("../components/VendorInfo/Dashboard"));
 const AllOrder = lazy(() => import("../components/VendorInfo/Orders/AllOrder"));
 const OrderDetails = lazy(
-  () => import("../components/VendorInfo/Orders/OrderDetails")
+  () => import("../components/VendorInfo/Orders/OrderDetails"),
 );
 const AllProduct = lazy(
-  () => import("../components/VendorInfo/Products/AllProduct")
+  () => import("../components/VendorInfo/Products/AllProduct"),
 );
 const NewProduct = lazy(
-  () => import("../components/VendorInfo/Products/NewProduct")
+  () => import("../components/VendorInfo/Products/NewProduct"),
 );
 const Customer = lazy(
-  () => import("../components/VendorInfo/Customers/Customer")
+  () => import("../components/VendorInfo/Customers/Customer"),
 );
 const Payments = lazy(
-  () => import("../components/VendorInfo/Payments/Payments")
+  () => import("../components/VendorInfo/Payments/Payments"),
 );
 const PreviewInvoice = lazy(
-  () => import("../components/VendorInfo/Payments/PreviewInvoice")
+  () => import("../components/VendorInfo/Payments/PreviewInvoice"),
 );
 const EditVendorProfile = lazy(
-  () => import("../components/VendorInfo/Setting/EditVendorProfile")
+  () => import("../components/VendorInfo/Setting/EditVendorProfile"),
 );
 const Inbox = lazy(() => import("../components/VendorInfo/Inbox"));
 const AllPost = lazy(
-  () => import("../components/VendorInfo/Community&Res/AllPost")
+  () => import("../components/VendorInfo/Community&Res/AllPost"),
 );
 const MbaayCommunity = lazy(
-  () => import("../components/VendorInfo/Community&Res/MbaayCommunity")
+  () => import("../components/VendorInfo/Community&Res/MbaayCommunity"),
 );
 const Requests = lazy(
-  () => import("../components/VendorInfo/Verification/Requests")
+  () => import("../components/VendorInfo/Verification/Requests"),
 );
 
 const RequestDetail = lazy(
-  () => import("../components/VendorInfo/Verification/RequestDetail")
+  () => import("../components/VendorInfo/Verification/RequestDetail"),
 );
 
 const Review = lazy(() => import("../components/VendorInfo/Review/Review"));
 
 const GeneralSetting = lazy(
-  () => import("../components/VendorInfo/Setting/GeneralSetting")
+  () => import("../components/VendorInfo/Setting/GeneralSetting"),
 );
 
 const Kyc = lazy(() => import("../components/VendorInfo/Verification/Kyc"));
@@ -84,14 +84,17 @@ const routesConfig: RouteObject[] = [
             element: <Role />,
           },
           { path: "orders", element: withSuspense(AllOrder) },
-          { path: "order-details", element: withSuspense(OrderDetails) },
+          {
+            path: "order-details/:orderId",
+            element: withSuspense(OrderDetails),
+          },
           { path: "all-products", element: withSuspense(AllProduct) },
           { path: "new-product", element: withSuspense(NewProduct) },
           { path: "customers", element: withSuspense(Customer) },
           { path: "Payments", element: withSuspense(Payments) },
           { path: "preview-invoice", element: withSuspense(PreviewInvoice) },
           {
-            path: "edit-vendor-profile",
+            path: "admin-profile",
             element: withSuspense(EditVendorProfile),
           },
           {
@@ -107,7 +110,7 @@ const routesConfig: RouteObject[] = [
           },
           { path: "reviews", element: withSuspense(Review) },
           { path: "general-setting", element: withSuspense(GeneralSetting) },
-          { path: "user-management", element: withSuspense(AllUsers) }
+          { path: "user-management", element: withSuspense(AllUsers) },
         ],
       },
     ],

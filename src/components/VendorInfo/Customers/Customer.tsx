@@ -38,7 +38,7 @@ const CustomersPage: React.FC = () => {
 
   const paginatedCustomers = filteredCustomers.slice(
     (currentPage - 1) * pageSize,
-    currentPage * pageSize
+    currentPage * pageSize,
   );
 
   const handlePageChange = (newPage: number) => {
@@ -51,20 +51,20 @@ const CustomersPage: React.FC = () => {
     iso ? new Date(iso).toLocaleString() : "-";
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="min-h-screen p-6 bg-gray-50">
       {/* Summary Boxes */}
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6"
+        className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
         <motion.div
-          className="p-4 bg-white rounded-lg shadow-lg flex items-center space-x-3"
+          className="flex items-center p-4 space-x-3 bg-white rounded-lg shadow-lg"
           whileHover={{ scale: 1.02 }}
           transition={{ duration: 0.2 }}
         >
-          <div className="bg-blue-100 p-3 rounded-full">
+          <div className="p-3 bg-blue-100 rounded-full">
             <User className="text-blue-500" size={24} />
           </div>
           <div>
@@ -74,11 +74,11 @@ const CustomersPage: React.FC = () => {
         </motion.div>
 
         <motion.div
-          className="p-4 bg-white rounded-lg shadow-lg flex items-center space-x-3"
+          className="flex items-center p-4 space-x-3 bg-white rounded-lg shadow-lg"
           whileHover={{ scale: 1.02 }}
           transition={{ duration: 0.2 }}
         >
-          <div className="bg-green-100 p-3 rounded-full">
+          <div className="p-3 bg-green-100 rounded-full">
             <CreditCard className="text-green-500" size={24} />
           </div>
           <div>
@@ -90,7 +90,7 @@ const CustomersPage: React.FC = () => {
         </motion.div>
 
         <motion.div
-          className="p-4 bg-white rounded-lg shadow-lg flex flex-col justify-center"
+          className="flex flex-col justify-center p-4 bg-white rounded-lg shadow-lg"
           whileHover={{ scale: 1.02 }}
         >
           <div className="text-sm font-medium">Successful Payments</div>
@@ -100,7 +100,7 @@ const CustomersPage: React.FC = () => {
         </motion.div>
 
         <motion.div
-          className="p-4 bg-white rounded-lg shadow-lg flex flex-col justify-center"
+          className="flex flex-col justify-center p-4 bg-white rounded-lg shadow-lg"
           whileHover={{ scale: 1.02 }}
         >
           <div className="text-sm font-medium">Pending / Failed</div>
@@ -115,14 +115,14 @@ const CustomersPage: React.FC = () => {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3"
+        className="flex flex-col items-start justify-between gap-3 mb-4 sm:flex-row sm:items-center"
       >
         <h1 className="text-2xl font-bold">Orders / Customers</h1>
         <div className="flex items-center gap-2">
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as any)}
-            className="border border-gray-300 p-2 rounded"
+            className="p-2 border border-gray-300 rounded"
           >
             <option value="All">All</option>
             <option value="Successful">Successful</option>
@@ -137,30 +137,30 @@ const CustomersPage: React.FC = () => {
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       ) : error ? (
-        <div className="p-4 bg-red-50 rounded">Failed to load customers.</div>
+        <div className="p-4 rounded bg-red-50">Failed to load customers.</div>
       ) : customers.length === 0 ? (
         <div className="flex items-center justify-center py-16">
-          <div className="w-full max-w-md p-8 bg-white rounded-lg shadow text-center">
+          <div className="w-full max-w-md p-8 text-center bg-white rounded-lg shadow">
             <div className="flex items-center justify-center mb-4">
               <User className="w-12 h-12 text-gray-400" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">
+            <h3 className="mb-2 text-lg font-semibold">
               No orders or customers found
             </h3>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="mb-4 text-sm text-muted-foreground">
               There are no orders to display right now. When customers place
               orders, they'll appear here with payment details.
             </p>
             <div className="flex items-center justify-center gap-3">
               <button
                 onClick={() => refetch()}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded bg-primary text-white"
+                className="inline-flex items-center gap-2 px-4 py-2 text-white rounded bg-primary"
               >
                 <RefreshCw className="w-4 h-4" /> Refresh
               </button>
               <button
                 onClick={() => window.location.reload()}
-                className="px-4 py-2 rounded border"
+                className="px-4 py-2 border rounded"
               >
                 Reload App
               </button>
@@ -169,26 +169,26 @@ const CustomersPage: React.FC = () => {
         </div>
       ) : (
         <div>
-          <div className="overflow-x-auto shadow rounded-lg">
+          <div className="overflow-x-auto rounded-lg shadow">
             <table className="min-w-full bg-white rounded-lg">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-600">
+                  <th className="px-4 py-2 text-sm font-medium text-left text-gray-600">
                     Order ID
                   </th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-600">
+                  <th className="px-4 py-2 text-sm font-medium text-left text-gray-600">
                     Customer
                   </th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-600">
+                  <th className="px-4 py-2 text-sm font-medium text-left text-gray-600">
                     Products
                   </th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-600">
+                  <th className="px-4 py-2 text-sm font-medium text-left text-gray-600">
                     Total
                   </th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-600">
+                  <th className="px-4 py-2 text-sm font-medium text-left text-gray-600">
                     Pay Status
                   </th>
-                  <th className="py-2 px-4 text-left text-sm font-medium text-gray-600">
+                  <th className="px-4 py-2 text-sm font-medium text-left text-gray-600">
                     Date
                   </th>
                 </tr>
@@ -203,37 +203,44 @@ const CustomersPage: React.FC = () => {
                     className="border-b"
                     whileHover={{ scale: 1.01 }}
                   >
-                    <td className="py-2 px-4 text-sm">
+                    <td className="px-4 py-2 text-sm">
                       {(order._id || "").slice(0, 8)}
                     </td>
-                    <td className="py-2 px-4 text-sm">
+                    <td className="px-4 py-2 text-sm">
                       <div className="font-medium">
-                        {order.userId?.name || order.user?.name || "-"}
+                        {(() => {
+                          const buyerName =
+                            `${order.buyerInfo?.first_name || ""} ${order.buyerInfo?.last_name || ""}`.trim();
+                          if (buyerName && buyerName !== "") return buyerName;
+                          if (order.userId?.name) return order.userId.name;
+                          if (order.user?.name) return order.user.name;
+                          return "Unknown Customer";
+                        })()}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {order.userId?.email || order.user?.email || "-"}
+                        {order.buyerInfo?.email || order.user?.email || "-"}
                       </div>
                     </td>
-                    <td className="py-2 px-4 text-sm">
+                    <td className="px-4 py-2 text-sm">
                       {(order.items || []).length} items
                     </td>
-                    <td className="py-2 px-4 text-sm">
+                    <td className="px-4 py-2 text-sm">
                       ${order.totalPrice ?? 0}
                     </td>
-                    <td className="py-2 px-4 text-sm">
+                    <td className="px-4 py-2 text-sm">
                       <span
                         className={`px-2 py-1 rounded text-sm ${
                           order.payStatus === "Successful"
                             ? "bg-green-100 text-green-700"
                             : order.payStatus === "Pending"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-red-100 text-red-700"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-red-100 text-red-700"
                         }`}
                       >
                         {order.payStatus || "-"}
                       </span>
                     </td>
-                    <td className="py-2 px-4 text-sm">
+                    <td className="px-4 py-2 text-sm">
                       {formatDate(order.createdAt)}
                     </td>
                   </motion.tr>
@@ -243,7 +250,7 @@ const CustomersPage: React.FC = () => {
           </div>
 
           <motion.div
-            className="flex justify-between items-center mt-4"
+            className="flex items-center justify-between mt-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
@@ -256,7 +263,7 @@ const CustomersPage: React.FC = () => {
               <motion.button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-3 py-1 border rounded bg-white text-gray-600 disabled:opacity-50"
+                className="px-3 py-1 text-gray-600 bg-white border rounded disabled:opacity-50"
                 whileHover={{ scale: 1.05 }}
               >
                 Prev
@@ -278,7 +285,7 @@ const CustomersPage: React.FC = () => {
               <motion.button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1 border rounded bg-white text-gray-600 disabled:opacity-50"
+                className="px-3 py-1 text-gray-600 bg-white border rounded disabled:opacity-50"
                 whileHover={{ scale: 1.05 }}
               >
                 Next
