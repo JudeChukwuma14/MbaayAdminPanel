@@ -98,22 +98,22 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
     actualType === "user"
       ? userQuery.data
       : actualType === "vendor"
-      ? vendorQuery.data
-      : adminQuery.data;
+        ? vendorQuery.data
+        : adminQuery.data;
 
   const isLoading =
     type === "user"
       ? userQuery.isLoading
       : type === "vendor"
-      ? vendorQuery.isLoading
-      : adminQuery.isLoading;
+        ? vendorQuery.isLoading
+        : adminQuery.isLoading;
 
   const error =
     type === "user"
       ? userQuery.error
       : type === "vendor"
-      ? vendorQuery.error
-      : adminQuery.error;
+        ? vendorQuery.error
+        : adminQuery.error;
 
   const isBlocked = data?.isBlocked;
   // Handle both boolean and string values for isBlocked
@@ -121,8 +121,8 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
     typeof isBlocked === "boolean"
       ? isBlocked
       : typeof isBlocked === "string"
-      ? isBlocked.toLowerCase() === "true"
-      : false;
+        ? isBlocked.toLowerCase() === "true"
+        : false;
   console.log("isBlock", isBlocked, "isBlockedStatus", isBlockedStatus);
 
   /* ---------------------------------------------------------- */
@@ -147,7 +147,7 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
     onSuccess: (data, variables) => {
       console.log(
         `${variables.action} ${variables.userType} successful:`,
-        data
+        data,
       );
       // Invalidate relevant queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["user", id] });
@@ -156,12 +156,24 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       queryClient.invalidateQueries({ queryKey: ["vendors"] });
       queryClient.invalidateQueries({ queryKey: ["admins"] });
+      onBack();
     },
     onError: (error, variables) => {
       console.error(
         `Error ${variables.action}ing ${variables.userType}:`,
-        error
+        error,
       );
+    },
+    onSettled: (_data, error, variables) => {
+      if (!error) {
+        toast.success(
+          `${variables.action}ed ${variables.userType} successfully!`,
+          {
+            position: "top-right",
+            autoClose: 3000,
+          },
+        );
+      }
     },
   });
 
@@ -185,7 +197,7 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
         recipientType,
         title,
         message,
-        admin.token
+        admin.token,
       ),
     onSuccess: (data) => {
       console.log("Private message sent successfully:", data);
@@ -316,16 +328,16 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
               {type === "user"
                 ? "Users"
                 : type === "vendor"
-                ? "Vendors"
-                : "Admins"}
+                  ? "Vendors"
+                  : "Admins"}
             </Button>
             <Separator orientation="vertical" className="h-6" />
             <h1 className="text-2xl font-bold text-foreground">
               {type === "user"
                 ? "User"
                 : type === "vendor"
-                ? "Vendor"
-                : adminQuery?.data?.role || "Admin"}{" "}
+                  ? "Vendor"
+                  : adminQuery?.data?.role || "Admin"}{" "}
               Details
             </h1>
           </div>
@@ -448,7 +460,7 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                             </p>
                             <p className="font-medium">
                               {new Date(
-                                data.createdAt || data.joinDate
+                                data.createdAt || data.joinDate,
                               ).toLocaleDateString()}
                             </p>
                           </div>
@@ -504,7 +516,7 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                             $
                             {(data.payments || []).reduce(
                               (sum: number, p: any) => sum + (p.amount || 0),
-                              0
+                              0,
                             )}
                           </p>
                           <p className="text-sm text-muted-foreground">
@@ -567,7 +579,7 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                                 </div>
                                 <Badge
                                   variant={getStatusBadgeVariant(
-                                    request.verificationStatus
+                                    request.verificationStatus,
                                   )}
                                   className="text-sm"
                                 >
@@ -619,7 +631,7 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                                   <span>
                                     Created:{" "}
                                     {new Date(
-                                      request.createdAt
+                                      request.createdAt,
                                     ).toLocaleDateString()}
                                   </span>
                                 </div>
@@ -663,7 +675,7 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                                 <span>
                                   Order Date:{" "}
                                   {new Date(
-                                    order.createdAt || order.orderDate
+                                    order.createdAt || order.orderDate,
                                   ).toLocaleDateString()}
                                 </span>
                               </div>
@@ -765,21 +777,21 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                         <>
                           <CheckCircle className="w-4 h-4" />
                           Unblock{" "}
-                         {type === "user"
-                ? "User"
-                : type === "vendor"
-                ? "Vendor"
-                : adminQuery?.data?.role || "Admin"}{" "}
+                          {type === "user"
+                            ? "User"
+                            : type === "vendor"
+                              ? "Vendor"
+                              : adminQuery?.data?.role || "Admin"}{" "}
                         </>
                       ) : (
                         <>
                           <Ban className="w-4 h-4" />
                           Block{" "}
                           {type === "user"
-                ? "User"
-                : type === "vendor"
-                ? "Vendor"
-                : adminQuery?.data?.role || "Admin"}{" "}
+                            ? "User"
+                            : type === "vendor"
+                              ? "Vendor"
+                              : adminQuery?.data?.role || "Admin"}{" "}
                         </>
                       )}
                     </Button>
@@ -811,11 +823,11 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                         <>
                           <Trash2 className="w-4 h-4" />
                           Delete{" "}
-                         {type === "user"
-                ? "User"
-                : type === "vendor"
-                ? "Vendor"
-                : adminQuery?.data?.role || "Admin"}{" "}
+                          {type === "user"
+                            ? "User"
+                            : type === "vendor"
+                              ? "Vendor"
+                              : adminQuery?.data?.role || "Admin"}{" "}
                         </>
                       )}
                     </Button>
@@ -949,8 +961,8 @@ export function AllUserDetailed({ type, id, onBack }: UserVendorDetailProps) {
                 {type === "user"
                   ? "User"
                   : type === "vendor"
-                  ? "Vendor"
-                  : "Admin"}
+                    ? "Vendor"
+                    : "Admin"}
               </h3>
               <Button
                 variant="ghost"

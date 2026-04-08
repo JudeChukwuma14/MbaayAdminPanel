@@ -17,6 +17,13 @@ const API_BASE_URL_PRO = "https://ilosiwaju-mbaay-2025.com/api/v1/products";
 export const PRO = axios.create({
   baseURL: API_BASE_URL_PRO,
 });
+
+const API_BASE_URL_NOT =
+  "https://ilosiwaju-mbaay-2025.com/api/v1/notifications";
+
+export const notApi = axios.create({
+  baseURL: API_BASE_URL_NOT,
+});
 export const createAdmin = async (userData: any) => {
   try {
     const response = await api.post("/create_admin", userData);
@@ -48,7 +55,9 @@ export const findOneAdmin = async (token: string | null) => {
         Authorization: `Bearer ${token}`,
       },
     });
-    return response.data.data.requests;
+
+    console.log("Find One Admin Response:", response);
+    return response.data.data;
   } catch (error: any) {
     console.error("Fetch Admin Error:", error.response?.data || error);
     throw error.response?.data?.message || "Failed to fetch admin";
@@ -69,7 +78,7 @@ export const get_vendor_details = async (id: any) => {
 export const validate_reject_vendor = async (
   id: any,
   action: string,
-  token: string | null
+  token: string | null,
 ) => {
   try {
     if (!token) throw new Error("Authorization token is missing");
@@ -81,7 +90,7 @@ export const validate_reject_vendor = async (
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
 
     console.log(response.data);
@@ -89,7 +98,7 @@ export const validate_reject_vendor = async (
   } catch (error: any) {
     console.error("Fetch Admin Error:", error.response?.data || error);
     throw new Error(
-      error.response?.data?.message || "Failed to process request"
+      error.response?.data?.message || "Failed to process request",
     );
   }
 };
@@ -109,7 +118,7 @@ export const getAllVendor = async (token: string | null) => {
   } catch (error: any) {
     console.error(
       "Fetch Vendor Requests Error:",
-      error.response?.data || error
+      error.response?.data || error,
     );
     throw error;
   }
@@ -172,7 +181,7 @@ export const getVendorById = async (id: string | null) => {
 
 export const getAdminById = async (
   adminId: string | null,
-  token: string | null
+  token: string | null,
 ) => {
   try {
     const response = await api.get(`/get_admin/${adminId}`, {
@@ -214,7 +223,7 @@ export const approveKyc = async (token: string | null, vendorId: string) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
     return response;
   } catch (error) {
@@ -236,7 +245,7 @@ export const rejectKyc = async (token: string | null, vendorId: string) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
     return response;
   } catch (error) {
@@ -263,11 +272,109 @@ export const getAllOrders = async (token: string | null) => {
   }
 };
 
+export const getAdminDashboardStats = async (token: string | null) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get("/dashboard/stats", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      "Fetch Dashboard Stats Error:",
+      error.response?.data || error,
+    );
+    throw error;
+  }
+};
+
+export const getAdminNotifications = async (
+  token: string | null,
+  params?: { isRead?: boolean; page?: number; limit?: number },
+) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get("/notifications", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      params,
+    });
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      "Fetch Admin Notifications Error:",
+      error.response?.data || error,
+    );
+    throw error;
+  }
+};
+
+export const getOneOrderForAdmin = async (
+  token: string | null,
+  orderId: string,
+) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get(`/orders/${orderId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data.order;
+  } catch (error: any) {
+    console.error(
+      "Fetch One Order For Admin Error:",
+      error.response?.data || error,
+    );
+    throw error;
+  }
+};
+
+export const markOneAsRead = async (
+  notificationId: string,
+  adminId: string,
+) => {
+  try {
+    const response = await notApi.patch(
+      `/notifications/${notificationId}/${adminId}`,
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Mark One As Read Error:", error);
+    throw error;
+  }
+};
+
+export const markAdminNotificationAsRead = async (adminId: string) => {
+  try {
+    const response = await notApi.patch(`/notifications/read-all/${adminId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Mark All As Read Error:", error);
+    throw error;
+  }
+};
+
 export const BlockUnblockDeleteUser = async (
   userId: string,
   userType: "user" | "vendor" | "admin" | "customerCare",
   action: "block" | "unblock" | "delete",
-  token: string | null
+  token: string | null,
 ) => {
   try {
     if (!token) {
@@ -285,7 +392,7 @@ export const BlockUnblockDeleteUser = async (
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
 
     return response.data;
@@ -300,7 +407,7 @@ export const sendPrivateMessage = async (
   recipientType: "user" | "vendor",
   title: string,
   message: string,
-  token: string | null
+  token: string | null,
 ) => {
   if (!token) {
     throw new Error("No token provided");
@@ -319,7 +426,7 @@ export const sendPrivateMessage = async (
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
 
     return response.data;
@@ -362,7 +469,7 @@ export const getAllCustomer_PaymentStats = async (token: string | null) => {
   } catch (error: any) {
     console.error(
       "Fetch Customers Payment Stats Error:",
-      error.response?.data || error
+      error.response?.data || error,
     );
     throw error;
   }
@@ -372,7 +479,7 @@ export const broadcastMessage = async (
   title: string,
   message: string,
   targetUsers: "all" | "users" | "vendors" | "admins",
-  token: string | null
+  token: string | null,
 ) => {
   if (!token) {
     throw new Error("No token provided");
@@ -390,7 +497,7 @@ export const broadcastMessage = async (
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
     return response.data;
   } catch (error: any) {
@@ -415,7 +522,7 @@ export const getAllCommunitysPosts = async (token: string | null) => {
   } catch (error: any) {
     console.error(
       "Fetch Communitys Posts Error:",
-      error.response?.data || error
+      error.response?.data || error,
     );
     throw error;
   }
@@ -437,7 +544,7 @@ export const getMbaayCommunity = async (token: string | null) => {
   } catch (error: any) {
     console.error(
       "Fetch Mbaay Community Error:",
-      error.response?.data || error
+      error.response?.data || error,
     );
     throw error;
   }
@@ -469,7 +576,7 @@ export const createPost = async (data: any, token: string | null) => {
 
 export const editMbaayCommunity = async (
   token: string,
-  communityData: FormData
+  communityData: FormData,
 ) => {
   try {
     if (!token) {
@@ -491,7 +598,7 @@ export const editMbaayCommunity = async (
 
 export const uploadAdminProduct = async (
   token: string,
-  productData: FormData
+  productData: FormData,
 ) => {
   try {
     const response = await PRO.post(`/admin_upload_products`, productData, {
@@ -508,16 +615,161 @@ export const uploadAdminProduct = async (
   }
 };
 
+export const getAdminProducts = async (token: any) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get(`/products`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log("Admin products response:", response);
+    return response.data.products;
+  } catch (error: any) {
+    console.error("Error fetching admin products:", error);
+    throw error.response?.data?.message || error.message || error;
+  }
+};
+
+export const getOneAdminProduct = async (productId: string, token: any) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get(`/products/${productId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log("One admin product response:", response);
+    return response.data.product;
+  } catch (error: any) {
+    console.error("Error fetching one admin product:", error);
+    throw error.response?.data?.message || error.message || error;
+  }
+};
+
+export const updateAdminProduct = async (
+  productId: string,
+  formData: FormData,
+  token: any,
+) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.put(`/products/${productId}`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    console.log("Update admin product response:", response);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating admin product:", error);
+    throw error.response?.data?.message || error.message || error;
+  }
+};
+
+export const deleteAdminProduct = async (productId: string, token: any) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.delete(`/products/${productId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log("Delete admin product response:", response);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error deleting admin product:", error);
+    throw error.response?.data?.message || error.message || error;
+  }
+};
+
+export const getAdminPaymentsAndInvoices = async (token: any) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.get("/payments/invoices", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error fetching admin payments and invoices:", error);
+    throw error.response?.data?.message || error.message || error;
+  }
+};
+
+export const getVendorProducts = async (token: any) => {
+  ``;
+  try {
+    const response = await PRO.get(`/admin_upload_products`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    console.log(response);
+    return response.data.products;
+  } catch (error) {
+    console.error("Error fetching vendor products:", error);
+    throw error;
+  }
+};
+
 // React Query hooks
 export const useEditMbaayCommunity = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ token, communityData }: { token: string; communityData: FormData }) => 
-      editMbaayCommunity(token, communityData),
+    mutationFn: ({
+      token,
+      communityData,
+    }: {
+      token: string;
+      communityData: FormData;
+    }) => editMbaayCommunity(token, communityData),
     onSuccess: () => {
       // Invalidate and refetch the Mbaay community data
       queryClient.invalidateQueries({ queryKey: ["mbaay_community"] });
     },
   });
+};
+
+export const editAdminProfile = async (formData: FormData, token: any) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await api.put('/profile', formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Error editing admin profile:", error);
+    throw error.response?.data?.message || error.message || error;
+  }
 };

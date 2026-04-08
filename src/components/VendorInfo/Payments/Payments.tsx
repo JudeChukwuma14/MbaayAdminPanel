@@ -1,6 +1,6 @@
-import  { useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import {CreditCard, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { CreditCard, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 
 const PaymentsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -21,12 +21,19 @@ const PaymentsPage = () => {
     status: i % 2 === 0 ? "Paid" : i % 3 === 0 ? "Overdue" : "Unpaid",
   }));
 
-  const filteredInvoices = filter === "All status" ? invoices : invoices.filter((invoice) => invoice.status === filter);
+  const filteredInvoices =
+    filter === "All status"
+      ? invoices
+      : invoices.filter((invoice) => invoice.status === filter);
 
   const totalPages = Math.ceil(filteredInvoices.length / rowsPerPage);
-  const paginatedInvoices = filteredInvoices.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  const paginatedInvoices = filteredInvoices.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  );
 
-  const handleNext = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
+  const handleNext = () =>
+    currentPage < totalPages && setCurrentPage(currentPage + 1);
   const handlePrev = () => currentPage > 1 && setCurrentPage(currentPage - 1);
 
   return (
@@ -34,10 +41,30 @@ const PaymentsPage = () => {
       {/* Cards Section */}
       <div className="grid grid-cols-4 gap-4 mb-5">
         {[
-          { title: "Total Invoices", value: `$${totalInvoices.toLocaleString()}`, icon: CreditCard, color: "text-blue-500" },
-          { title: "Paid", value: `$${paidInvoices.toLocaleString()}`, icon: CheckCircle, color: "text-green-500" },
-          { title: "Unpaid", value: `$${unpaidInvoices.toLocaleString()}`, icon: XCircle, color: "text-red-500" },
-          { title: "Overdue", value: `$${overdueInvoices.toLocaleString()}`, icon: AlertCircle, color: "text-yellow-500" },
+          {
+            title: "Total Invoices",
+            value: `$${totalInvoices.toLocaleString()}`,
+            icon: CreditCard,
+            color: "text-blue-500",
+          },
+          {
+            title: "Paid",
+            value: `$${paidInvoices.toLocaleString()}`,
+            icon: CheckCircle,
+            color: "text-green-500",
+          },
+          {
+            title: "Unpaid",
+            value: `$${unpaidInvoices.toLocaleString()}`,
+            icon: XCircle,
+            color: "text-red-500",
+          },
+          {
+            title: "Overdue",
+            value: `$${overdueInvoices.toLocaleString()}`,
+            icon: AlertCircle,
+            color: "text-yellow-500",
+          },
         ].map((card, index) => (
           <motion.div
             key={index}
@@ -115,8 +142,8 @@ const PaymentsPage = () => {
                       invoice.status === "Paid"
                         ? "bg-green-500"
                         : invoice.status === "Unpaid"
-                        ? "bg-red-500"
-                        : "bg-yellow-500"
+                          ? "bg-red-500"
+                          : "bg-yellow-500"
                     }`}
                   >
                     {invoice.status}
@@ -133,7 +160,7 @@ const PaymentsPage = () => {
             disabled={currentPage === 1}
             className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
           >
-           Prev
+            Prev
           </button>
           <span>
             Page {currentPage} of {totalPages}
@@ -143,7 +170,7 @@ const PaymentsPage = () => {
             disabled={currentPage === totalPages}
             className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
           >
-            Next 
+            Next
           </button>
         </div>
       </div>

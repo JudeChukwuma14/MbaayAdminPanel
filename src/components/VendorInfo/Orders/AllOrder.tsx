@@ -41,8 +41,6 @@ const AllProductsPage = () => {
         order.items?.reduce((sum: number, item: any) => {
           return sum + item.price * item.quantity;
         }, 0) || 0;
-
-      // Get customer info
       const customerName = order.userId?.name || "Unknown Customer";
       const customerEmail = order.userId?.email || "";
 
@@ -64,6 +62,7 @@ const AllProductsPage = () => {
   };
 
   const orderProducts = orders ? transformOrderData(orders) : [];
+  console.log("Transformed order products:", orderProducts);
 
   const filteredProducts = orderProducts.filter((product) => {
     if (currentTab === "All") return true;
@@ -78,7 +77,7 @@ const AllProductsPage = () => {
 
   const paginatedProducts = sortedProducts.slice(
     (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
+    currentPage * rowsPerPage,
   );
   const totalPages = Math.ceil(sortedProducts.length / rowsPerPage);
 
@@ -209,14 +208,14 @@ const AllProductsPage = () => {
                         product.status === "On Delivery"
                           ? "text-yellow-500"
                           : product.status === "Delivered"
-                          ? "text-green-500"
-                          : "text-red-500"
+                            ? "text-green-500"
+                            : "text-red-500"
                       }`}
                     >
                       {product.status}
                     </td>
                     <td className="px-4 py-3">
-                      <NavLink to={`/app/order-details/${product.id}`}>
+                      <NavLink to={`/order-details/${product.id}`}>
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
