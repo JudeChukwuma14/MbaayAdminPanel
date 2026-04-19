@@ -8,7 +8,6 @@ import {
   Loader2,
   Shield,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,15 +38,30 @@ import { RootState } from "../redux/store";
 const SpinnerRow = ({ colSpan }: { colSpan: number }) => (
   <TableRow>
     <TableCell colSpan={colSpan} className="py-12 text-center">
-      <Loader2 className="w-6 h-6 mx-auto animate-spin text-primary" />
-      <p className="mt-2 text-sm text-muted-foreground">Loading…</p>
+      <Loader2 className="w-6 h-6 mx-auto animate-spin text-orange-500" />
+      <p className="mt-2 text-sm text-gray-500">Loading…</p>
     </TableCell>
   </TableRow>
 );
 
 /* ------------------------------------------------------------------ */
-/* Component                                                          */
+/* Status badge helper                                                */
 /* ------------------------------------------------------------------ */
+const StatusBadge = ({ status }: { status?: string }) => {
+  const s = status?.toLowerCase();
+  let cls = "text-xs font-medium px-2.5 py-0.5 rounded-full ";
+  if (s === "active" || s === "verified" || s === "approved") {
+    cls += "bg-green-100 text-green-700";
+  } else if (s === "pending") {
+    cls += "bg-orange-100 text-orange-600";
+  } else if (s === "inactive" || s === "rejected" || s === "not-verified") {
+    cls += "bg-red-100 text-red-600";
+  } else {
+    cls += "bg-gray-100 text-gray-600";
+  }
+  return <span className={cls}>{status || "—"}</span>;
+};
+
 const AllUsers = () => {
   const [activeTab, setActiveTab] = useState<"users" | "vendors" | "admins">(
     "users"
@@ -61,9 +75,7 @@ const AllUsers = () => {
   const admin = useSelector((state: RootState) => state.admin);
   const isAdminSuperAdmin = admin?.role === "Super Admin";
 
-  /* -------------------------------------------------------------- */
-  /* Vendor query                                                   */
-  /* -------------------------------------------------------------- */
+
   const { data: vendor = [], isLoading: vendorLoading } = useQuery({
     queryKey: ["vendors"],
     queryFn: async () => {
@@ -79,9 +91,7 @@ const AllUsers = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  /* -------------------------------------------------------------- */
-  /* User query – ready to be replaced with real API                */
-  /* -------------------------------------------------------------- */
+
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
@@ -133,7 +143,7 @@ const AllUsers = () => {
       v.storeName?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "all" ||
-      v.kycStatus?.toLowerCase() === statusFilter.toLowerCase();
+      v.verificationStatus?.toLowerCase() === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
   });
 
@@ -159,22 +169,6 @@ const AllUsers = () => {
       hour: "2-digit",
       minute: "2-digit",
     });
-
-  const getStatusBadgeVariant = (status?: string) => {
-    switch (status?.toLowerCase()) {
-      case "active":
-      case "verified":
-      case "approved":
-        return "default";
-      case "pending":
-        return "secondary";
-      case "inactive":
-      case "rejected":
-        return "destructive";
-      default:
-        return "outline";
-    }
-  };
 
   const handleViewDetail = (
     type: "user" | "vendor" | "admin",
@@ -203,22 +197,49 @@ const AllUsers = () => {
       />
     );
 
+  /* -------------------------------------------------------------- */
+  /* Tab button helper                                              */
+  /* -------------------------------------------------------------- */
+  const TabBtn = ({
+    tab,
+    label,
+    Icon,
+  }: {
+    tab: "users" | "vendors" | "admins";
+    label: string;
+    Icon: React.ComponentType<{ className?: string }>;
+  }) => {
+    const isActive = activeTab === tab;
+    return (
+      <button
+        onClick={() => switchTab(tab)}
+        className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-colors ${isActive
+            ? "bg-[#F87645] text-white shadow-sm"
+            : "bg-white text-gray-700 border border-gray-200 hover:bg-orange-50 hover:text-orange-600"
+          }`}
+      >
+        <Icon className="w-4 h-4" />
+        {label}
+      </button>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#F5F8FA]">
       {/* Header ---------------------------------------------------- */}
-      <header className="border-b border-border bg-card">
+      <header className="border-b border-gray-200 bg-white">
         <div className="container px-6 py-4 mx-auto">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-2xl font-bold text-gray-800">
               User Management
             </h1>
             <div className="relative">
-              <Search className="absolute w-4 h-4 -translate-y-1/2 left-3 top-1/2 text-muted-foreground" />
+              <Search className="absolute w-4 h-4 -translate-y-1/2 left-3 top-1/2 text-gray-400" />
               <Input
                 placeholder={`Search ${activeTab === "users" ? "users" : activeTab === "vendors" ? "vendors" : "admins"}...`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-80"
+                className="pl-10 w-80 border-gray-200 focus:ring-orange-400 focus:border-orange-400"
               />
             </div>
           </div>
@@ -228,47 +249,26 @@ const AllUsers = () => {
       <div className="container px-6 py-8 mx-auto">
         {/* Tabs ------------------------------------------------------ */}
         <div className="flex gap-2 mb-8">
-          <Button
-            variant={activeTab === "users" ? "default" : "outline"}
-            onClick={() => switchTab("users")}
-            className="flex items-center gap-2"
-          >
-            <Users className="w-4 h-4" />
-            Users
-          </Button>
-          <Button
-            variant={activeTab === "vendors" ? "default" : "outline"}
-            onClick={() => switchTab("vendors")}
-            className="flex items-center gap-2"
-          >
-            <Building2 className="w-4 h-4" />
-            Vendors
-          </Button>
+          <TabBtn tab="users" label="Users" Icon={Users} />
+          <TabBtn tab="vendors" label="Vendors" Icon={Building2} />
           {isAdminSuperAdmin && (
-            <Button
-              variant={activeTab === "admins" ? "default" : "outline"}
-              onClick={() => switchTab("admins")}
-              className="flex items-center gap-2"
-            >
-              <Shield className="w-4 h-4" />
-              Admins
-            </Button>
+            <TabBtn tab="admins" label="Admins" Icon={Shield} />
           )}
         </div>
 
         {/* Users table ----------------------------------------------- */}
         {activeTab === "users" && (
-          <Card>
-            <CardHeader>
+          <Card className="border-gray-200 shadow-sm bg-white">
+            <CardHeader className="border-b border-gray-100">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Users className="w-5 h-5 text-orange-500" />
                   Users Management
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-muted-foreground" />
+                  <Filter className="w-4 h-4 text-gray-400" />
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-40 border-gray-200">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -280,15 +280,15 @@ const AllUsers = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="bg-[#F5F8FA] hover:bg-[#F5F8FA]">
+                    <TableHead className="text-gray-600 font-semibold">Name</TableHead>
+                    <TableHead className="text-gray-600 font-semibold">Email</TableHead>
+                    <TableHead className="text-gray-600 font-semibold">Phone</TableHead>
+                    <TableHead className="text-gray-600 font-semibold">Status</TableHead>
+                    <TableHead className="text-right text-gray-600 font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -297,47 +297,41 @@ const AllUsers = () => {
                   ) : filteredUsers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="py-12 text-center">
-                        <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold">No User Found</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <Building2 className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <h3 className="text-lg font-semibold text-gray-700">No User Found</h3>
+                        <p className="mt-1 text-sm text-gray-400">
                           Try adjusting your filters or search term.
                         </p>
-                        <Button
+                        <button
                           onClick={() => {
                             setStatusFilter("all");
                             setSearchTerm("");
                           }}
-                          className="mt-4"
-                          size="sm"
+                          className="mt-4 flex items-center gap-2 px-4 py-2 mx-auto rounded bg-[#F87645] text-white text-sm hover:bg-orange-600 transition-colors"
                         >
-                          <Filter className="w-4 h-4 mr-2" />
+                          <Filter className="w-4 h-4" />
                           Reset Filters
-                        </Button>
+                        </button>
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredUsers.map((u: any) => (
-                      <TableRow key={u._id}>
-                        <TableCell className="font-medium">{u.name}</TableCell>
-                        <TableCell className="text-muted-foreground">
+                      <TableRow key={u._id} className="hover:bg-orange-50 transition-colors">
+                        <TableCell className="font-medium text-gray-800">{u.name}</TableCell>
+                        <TableCell className="text-gray-500">
                           {u.email}
                         </TableCell>
-                        <TableCell>{u.phoneNumber}</TableCell>
+                        <TableCell className="text-gray-700">{u.phoneNumber}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant={u.isverified ? "default" : "destructive"}
-                          >
-                            {u.isverified ? "Verified" : "Not verified"}
-                          </Badge>
+                          <StatusBadge status={u.isverified ? "Verified" : "Not verified"} />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <button
                             onClick={() => handleViewDetail("user", u._id)}
+                            className="p-1.5 rounded text-gray-500 hover:bg-orange-100 hover:text-orange-600 transition-colors"
                           >
                             <Eye className="w-4 h-4" />
-                          </Button>
+                          </button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -350,17 +344,17 @@ const AllUsers = () => {
 
         {/* Vendors table --------------------------------------------- */}
         {activeTab === "vendors" && (
-          <Card>
-            <CardHeader>
+          <Card className="border-gray-200 shadow-sm bg-white">
+            <CardHeader className="border-b border-gray-100">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Building2 className="w-5 h-5 text-orange-500" />
                   Vendors Management
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-muted-foreground" />
+                  <Filter className="w-4 h-4 text-gray-400" />
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-32 border-gray-200">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -373,16 +367,16 @@ const AllUsers = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Company Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Join Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="bg-[#F5F8FA] hover:bg-[#F5F8FA]">
+                    <TableHead className="text-gray-600 font-semibold">Company Name</TableHead>
+                    <TableHead className="text-gray-600 font-semibold">Email</TableHead>
+                    <TableHead className="text-gray-600 font-semibold">Category</TableHead>
+                    <TableHead className="text-gray-600 font-semibold">Status</TableHead>
+                    <TableHead className="text-gray-600 font-semibold">Join Date</TableHead>
+                    <TableHead className="text-right text-gray-600 font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -391,112 +385,53 @@ const AllUsers = () => {
                   ) : filteredVendors.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="py-12 text-center">
-                        <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold">
+                        <Building2 className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <h3 className="text-lg font-semibold text-gray-700">
                           No Vendors Found
                         </h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <p className="mt-1 text-sm text-gray-400">
                           Try adjusting your filters or search term.
                         </p>
-                        <Button
+                        <button
                           onClick={() => setStatusFilter("all")}
-                          className="mt-4"
-                          size="sm"
+                          className="mt-4 flex items-center gap-2 px-4 py-2 mx-auto rounded bg-[#F87645] text-white text-sm hover:bg-orange-600 transition-colors"
                         >
-                          <Filter className="w-4 h-4 mr-2" />
+                          <Filter className="w-4 h-4" />
                           Reset Filters
-                        </Button>
+                        </button>
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredVendors.map((v) => (
-                      <TableRow key={v._id}>
-                        <TableCell className="font-medium">
+                      <TableRow key={v._id} className="hover:bg-orange-50 transition-colors">
+                        <TableCell className="font-medium text-gray-800">
                           {v.storeName}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="text-gray-500">
                           {v.email}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">
+                          <Badge variant="outline" className="border-orange-200 text-orange-600 bg-orange-50">
                             {v.craftCategories[0]}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getStatusBadgeVariant(v.kycStatus)}>
-                            {v.kycStatus}
-                          </Badge>
+                          <StatusBadge status={v.verificationStatus} />
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="text-gray-500">
                           {formatDate(v.createdAt)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <button
                             onClick={() => handleViewDetail("vendor", v._id)}
+                            className="p-1.5 rounded text-gray-500 hover:bg-orange-100 hover:text-orange-600 transition-colors"
                           >
                             <Eye className="w-4 h-4" />
-                          </Button>
+                          </button>
                         </TableCell>
                       </TableRow>
                     ))
                   )}
-                  {/* {filteredVendors.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6}>
-                        <div className="flex flex-col items-center justify-center h-64 text-center">
-                          <Building2 className="w-12 h-12 mb-4 text-muted-foreground" />
-                          <h3 className="text-lg font-semibold">
-                            No Vendors Found
-                          </h3>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            Try adjusting your filters or search term.
-                          </p>
-                          <Button
-                            onClick={() => setStatusFilter("all")}
-                            className="mt-4"
-                          >
-                            <Filter className="w-4 h-4 mr-2" />
-                            Reset Filters
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredVendors.map((v) => (
-                      <TableRow key={v.id}>
-                        <TableCell className="font-medium">
-                          {v.storeName}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {v.email}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {v.craftCategories[0]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadgeVariant(v.kycStatus)}>
-                            {v.kycStatus}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatDate(v.createdAt)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewDetail("vendor", v.id)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )} */}
                 </TableBody>
               </Table>
             </CardContent>
@@ -505,17 +440,17 @@ const AllUsers = () => {
 
         {/* Admins table ---------------------------------------------- */}
         {activeTab === "admins" && isAdminSuperAdmin && (
-          <Card>
-            <CardHeader>
+          <Card className="border-gray-200 shadow-sm bg-white">
+            <CardHeader className="border-b border-gray-100">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Shield className="w-5 h-5 text-orange-500" />
                   Admins Management
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-muted-foreground" />
+                  <Filter className="w-4 h-4 text-gray-400" />
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-32 border-gray-200">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -527,16 +462,16 @@ const AllUsers = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Join Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="bg-[#F5F8FA] hover:bg-[#F5F8FA]">
+                    <TableHead className="text-gray-600 font-semibold">Name</TableHead>
+                    <TableHead className="text-gray-600 font-semibold">Email</TableHead>
+                    <TableHead className="text-gray-600 font-semibold">Role</TableHead>
+                    <TableHead className="text-gray-600 font-semibold">Status</TableHead>
+                    <TableHead className="text-gray-600 font-semibold">Join Date</TableHead>
+                    <TableHead className="text-right text-gray-600 font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -545,41 +480,40 @@ const AllUsers = () => {
                   ) : filteredAdmins.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="py-12 text-center">
-                        <Shield className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold">
+                        <Shield className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <h3 className="text-lg font-semibold text-gray-700">
                           No Admins Found
                         </h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        <p className="mt-1 text-sm text-gray-400">
                           No admin accounts are available.
                         </p>
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredAdmins.map((a: any) => (
-                      <TableRow key={a._id}>
-                        <TableCell className="font-medium">{a.name}</TableCell>
-                        <TableCell className="text-muted-foreground">
+                      <TableRow key={a._id} className="hover:bg-orange-50 transition-colors">
+                        <TableCell className="font-medium text-gray-800">{a.name}</TableCell>
+                        <TableCell className="text-gray-500">
                           {a.email}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">{a.role}</Badge>
+                          <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-600">
+                            {a.role}
+                          </span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getStatusBadgeVariant(a.status)}>
-                            {a.status || "Active"}
-                          </Badge>
+                          <StatusBadge status={a.status || "Active"} />
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="text-gray-500">
                           {formatDate(a.createdAt)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <button
                             onClick={() => handleViewDetail("admin", a._id)}
+                            className="p-1.5 rounded text-gray-500 hover:bg-orange-100 hover:text-orange-600 transition-colors"
                           >
                             <Eye className="w-4 h-4" />
-                          </Button>
+                          </button>
                         </TableCell>
                       </TableRow>
                     ))

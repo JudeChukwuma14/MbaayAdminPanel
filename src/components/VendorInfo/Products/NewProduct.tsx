@@ -515,114 +515,88 @@ const NewProduct = () => {
 
   return (
     <motion.div
-      className="max-w-full min-h-screen p-4 space-y-6 overflow-x-hidden bg-gray-100 sm:p-6"
+      className="max-w-full min-h-screen overflow-x-hidden bg-[#F5F8FA]"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
       <ToastContainer />
 
-      <div className="flex flex-col justify-between gap-3 p-4 mb-6 bg-white rounded-lg shadow sm:flex-row sm:items-center">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <h1 className="text-xl font-bold sm:text-2xl">New Product</h1>
+      {/* Header ---------------------------------------------------- */}
+      <header className="border-b border-gray-200 bg-white">
+        <div className="container px-6 py-4 mx-auto">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-2xl font-bold text-gray-800">New Product</h1>
 
-          {/*  =====  Listing Type Dropdown (custom)  =====  */}
-          <div className="relative" role="listbox" aria-label="Listing type">
-            <button
-              onClick={() => setShowListingTypeDropdown((v) => !v)}
-              className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
-              aria-haspopup="listbox"
-              aria-expanded={showListingTypeDropdown}
-            >
-              <span>
-                {listingType === "sales"
-                  ? "Regular"
-                  : listingType === "auction"
-                  ? "Auction"
-                  : "Flash Sale"}
-              </span>
-              <motion.div
-                animate={{ rotate: showListingTypeDropdown ? 180 : 0 }}
-                transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
+            {/* Listing type dropdown */}
+            <div className="relative" role="listbox" aria-label="Listing type">
+              <button
+                onClick={() => setShowListingTypeDropdown((v) => !v)}
+                className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-orange-50 hover:border-orange-300 hover:text-orange-600 transition-colors"
+                aria-haspopup="listbox"
+                aria-expanded={showListingTypeDropdown}
               >
-                <ChevronDown className="w-4 h-4" />
-              </motion.div>
-            </button>
-
-            <AnimatePresence>
-              {showListingTypeDropdown && (
+                <span className="font-medium">
+                  {listingType === "sales"
+                    ? "Regular Sale"
+                    : listingType === "auction"
+                    ? "Auction"
+                    : "Flash Sale"}
+                </span>
                 <motion.div
-                  className="absolute left-0 z-10 w-40 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg top-full"
-                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                  transition={{
-                    type: "tween",
-                    duration: 0.15,
-                    ease: "easeOut",
-                  }}
+                  animate={{ rotate: showListingTypeDropdown ? 180 : 0 }}
+                  transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
                 >
-                  <div className="p-1">
-                    <button
-                      className={`w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm ${
-                        listingType === "sales"
-                          ? "bg-blue-50 text-blue-600"
-                          : ""
-                      }`}
-                      onClick={() => {
-                        setListingType("sales");
-                        setShowListingTypeDropdown(false);
-                      }}
-                      role="option"
-                      aria-selected={listingType === "sales"}
-                    >
-                      Regular
-                    </button>
-                    <button
-                      className={`w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm ${
-                        listingType === "auction"
-                          ? "bg-blue-50 text-blue-600"
-                          : ""
-                      }`}
-                      onClick={() => {
-                        setListingType("auction");
-                        setShowListingTypeDropdown(false);
-                      }}
-                      role="option"
-                      aria-selected={listingType === "auction"}
-                    >
-                      Auction
-                    </button>
-                    <button
-                      className={`w-full text-left px-3 py-2 rounded hover:bg-gray-100 text-sm ${
-                        listingType === "flash sale"
-                          ? "bg-blue-50 text-blue-600"
-                          : ""
-                      }`}
-                      onClick={() => {
-                        setListingType("flash sale");
-                        setShowListingTypeDropdown(false);
-                      }}
-                      role="option"
-                      aria-selected={listingType === "flash sale"}
-                    >
-                      Flash Sale
-                    </button>
-                  </div>
+                  <ChevronDown className="w-4 h-4" />
                 </motion.div>
-              )}
-            </AnimatePresence>
+              </button>
+
+              <AnimatePresence>
+                {showListingTypeDropdown && (
+                  <motion.div
+                    className="absolute right-0 z-10 w-44 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg top-full"
+                    initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                    transition={{ type: "tween", duration: 0.15, ease: "easeOut" }}
+                  >
+                    <div className="p-1">
+                      {[
+                        { value: "sales", label: "Regular Sale" },
+                        { value: "auction", label: "Auction" },
+                        { value: "flash sale", label: "Flash Sale" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                            listingType === opt.value
+                              ? "bg-orange-50 text-orange-600 font-medium"
+                              : "hover:bg-gray-50 text-gray-700"
+                          }`}
+                          onClick={() => {
+                            setListingType(opt.value as any);
+                            setShowListingTypeDropdown(false);
+                          }}
+                          role="option"
+                          aria-selected={listingType === opt.value}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
-
-  
-      </div>
+      </header>
 
 
 
-      <div className="space-y-6">
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h2 className="pb-2 mb-4 text-lg font-semibold border-b">
+      <div className="container px-6 py-8 mx-auto space-y-6">
+        <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
+          <h2 className="pb-3 mb-5 text-base font-semibold text-gray-800 border-b border-gray-100">
             Basic Information
           </h2>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -644,12 +618,11 @@ const NewProduct = () => {
           </div>
         </div>
 
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h2 className="pb-2 mb-4 text-lg font-semibold border-b">
+        <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
+          <h2 className="pb-3 mb-5 text-base font-semibold text-gray-800 border-b border-gray-100">
             Categories and Media
           </h2>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-
             <CategorySelector
               selectedCategories={[]}
               activeCategory={selectedCategory}
@@ -668,7 +641,6 @@ const NewProduct = () => {
                 setSelectedSubSubCategory("");
               }}
             />
-
             <VideoUploader
               youtubeUrl={youtubeUrl}
               youtubeEmbedUrl={youtubeEmbedUrl}
@@ -681,15 +653,14 @@ const NewProduct = () => {
             />
           </div>
         </div>
-      </div>
-      <div className="p-4 bg-white rounded-lg shadow">
-        <h2 className="pb-2 mb-4 text-lg font-semibold border-b">
-          {listingType === "sales"
-            ? "Inventory and Pricing"
-            : listingType === "auction"
-            ? "Auction Settings"
-            : "Flash Sale Settings"}
-        </h2>
+        <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
+          <h2 className="pb-3 mb-5 text-base font-semibold text-gray-800 border-b border-gray-100">
+            {listingType === "sales"
+              ? "Inventory and Pricing"
+              : listingType === "auction"
+              ? "Auction Settings"
+              : "Flash Sale Settings"}
+          </h2>
 
         {listingType === "sales" ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -921,111 +892,70 @@ const NewProduct = () => {
             </div>
           </div>
         )}
-      </div>
+        </div>
 
-      <div className="flex flex-col justify-end p-4 space-y-3 bg-white rounded-lg shadow sm:flex-row sm:space-y-0 sm:space-x-4">
-        <button
-          className="order-3 px-4 py-2 text-red-500 border border-orange-500 rounded-lg sm:order-1"
-          onClick={handleDiscard}
-        >
-          Discard
-        </button>
-        <button
-          className="flex items-center justify-center order-2 px-4 py-2 text-white bg-red-500 rounded-lg"
-          onClick={handleSaveDraft}
-        >
-          {isSaveDraftLoading ? (
-            <>
-              <svg
-                className="w-4 h-4 mr-2 -ml-1 text-white animate-spin"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
+        {/* Action buttons */}
+        <div className="flex flex-col justify-end gap-3 p-5 bg-white rounded-lg border border-gray-200 shadow-sm sm:flex-row">
+          <button
+            className="order-3 px-5 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors sm:order-1"
+            onClick={handleDiscard}
+          >
+            Discard
+          </button>
+          <button
+            className="flex items-center justify-center gap-2 order-2 px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={handleSaveDraft}
+          >
+            {isSaveDraftLoading ? (
+              <svg className="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Saving...
-            </>
-          ) : (
-            "Save Draft"
-          )}
-
-        </button>
-        <button
-          className="flex items-center justify-center order-1 px-4 py-2 text-white bg-green-500 rounded-lg sm:order-3"
-          onClick={handleProdctAdd}
-        >
-          {isLoading ? (
-            <>
-              <svg
-                className="w-4 h-4 mr-2 -ml-1 text-white animate-spin"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
+            ) : null}
+            {isSaveDraftLoading ? "Saving…" : "Save Draft"}
+          </button>
+          <button
+            className="flex items-center justify-center gap-2 order-1 px-5 py-2 text-sm font-medium text-white bg-[#F87645] rounded-lg hover:bg-orange-600 transition-colors sm:order-3"
+            onClick={handleProdctAdd}
+          >
+            {isLoading ? (
+              <svg className="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Adding...
-            </>
-          ) : (
-            "Add Product"
-          )}
-        </button>
+            ) : null}
+            {isLoading ? "Adding…" : "Add Product"}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
         {showDiscardConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <motion.div
-              className="w-full max-w-md overflow-hidden bg-white rounded-lg"
-              initial={{ opacity: 0, scale: 0.9 }}
+              className="w-full max-w-md overflow-hidden bg-white rounded-xl shadow-xl"
+              initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
+              exit={{ opacity: 0, scale: 0.92 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
             >
               <div className="p-6">
-                <div className="mb-4">
-                  <h2 className="text-xl font-semibold text-red-500">
-                    Discard Changes?
-                  </h2>
-                  <p className="mt-2 text-gray-600">
-                    You have unsaved changes. Are you sure you want to discard
-                    them? This action cannot be undone.
-                  </p>
-                </div>
-                <div className="flex justify-end space-x-3">
+                <h2 className="text-lg font-bold text-gray-800 mb-2">
+                  Discard Changes?
+                </h2>
+                <p className="text-sm text-gray-500 mb-6">
+                  You have unsaved changes. Are you sure you want to discard them?
+                  This action cannot be undone.
+                </p>
+                <div className="flex justify-end gap-3">
                   <button
-                    className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg"
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                     onClick={() => setShowDiscardConfirm(false)}
                   >
                     Cancel
                   </button>
                   <button
-                    className="px-4 py-2 text-white bg-red-500 rounded-lg"
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
                     onClick={() => {
                       setShowDiscardConfirm(false);
                       discardChanges();
