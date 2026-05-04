@@ -1,47 +1,78 @@
-import React, { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
-import mbayy from "../../../assets/image/mbbaylogo.png"
-import { motion } from "framer-motion"
-
-import { useSelector } from "react-redux"
-import { get_vendor_details, validate_reject_vendor } from "../../../services/adminApi"
-
-type StoreType = "Counter" | "Shelve" | "Shop"
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import { useSelector } from "react-redux";
+import {
+  get_vendor_details,
+  validate_reject_vendor,
+} from "../../../services/adminApi";
+import { FiX, FiCheckCircle, FiXCircle, FiClock } from "react-icons/fi";
 
 interface VendorInfo {
-  userName: string
-  storeName: string
-  email: string
-  phoneNumber: string
-  craftCategories: string
-  country: string
-  address1: string
-  verificationStatus: string
-  createdAt: string
-  logo?: string
-  storeType: string
-  description?: string
-  storePhone:string
+  _id: string;
+  storeName: string;
+  email: string;
+  storePhone: string;
+  craftCategories: string[];
+  verificationStatus: string;
+  logo?: string;
+  storeType: string;
+  createdAt: string;
 }
 
+const formatPhoneNumber = (phone: string) => {
+  if (!phone) return "N/A";
+  const cleaned = phone.replace(/\D/g, "");
+  if (cleaned.startsWith("234") && cleaned.length === 13) {
+    return `+${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6, 9)} ${cleaned.slice(9)}`;
+  }
+  return phone;
+};
+
+const getStatusColor = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case "approved":
+      return "text-green-600 bg-green-100 border-green-200";
+    case "rejected":
+      return "text-red-600 bg-red-100 border-red-200";
+    case "pending":
+      return "text-yellow-600 bg-yellow-100 border-yellow-200";
+    default:
+      return "text-gray-600 bg-gray-100 border-gray-200";
+  }
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case "approved":
+      return <FiCheckCircle className="mr-1.5" />;
+    case "rejected":
+      return <FiXCircle className="mr-1.5" />;
+    case "pending":
+      return <FiClock className="mr-1.5" />;
+    default:
+      return null;
+  }
+};
+
 const RequestDetailPage: React.FC = () => {
-  const { id } = useParams() as { id: string }
-  const navigate = useNavigate()
-  const [request, setRequest] = useState<VendorInfo | null>(null)
-  const user = useSelector((state:any)=> state.admin)
+  const { id } = useParams() as { id: string };
+  const navigate = useNavigate();
+  const [request, setRequest] = useState<VendorInfo | null>(null);
+  const user = useSelector((state: any) => state.admin);
   const [loading, setLoading] = useState<string | null>(null);
 
   useEffect(() => {
     const getVendor = async () => {
       try {
-        const adminData = await get_vendor_details(id)
-        setRequest(adminData)
+        const adminData = await get_vendor_details(id);
+        setRequest(adminData);
       } catch (error) {
-        console.error("Error fetching vendor details:", error)
+        console.error("Error fetching vendor details:", error);
       }
-    }
-    if (id) getVendor()
-  }, [id])
+    };
+    if (id) getVendor();
+  }, [id]);
 
   const handleAction = async (action: "Approved" | "Rejected" | "Pending") => {
     setLoading(action);
@@ -55,156 +86,136 @@ const RequestDetailPage: React.FC = () => {
     }
   };
 
-  const handleStoreTypeChange = (newType: StoreType) => {
-    if (request) {
-      setRequest({ ...request, storeType: newType })
-    }
-  }
-
-  // const handleApprove = () => {
-  //   console.log("Approve clicked")
-  // }
-
-  // const handleReject = () => {
-  //   console.log("Reject clicked")
-  // }
-
-  // const handleReserve = () => {
-  //   console.log("Reserve clicked")
-  // }
-
   if (!request) {
-    return <div className="container mx-auto p-4">Loading...</div>
+    return (
+      <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex justify-center items-center z-50">
+        <div className="w-10 h-10 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="container mx-auto p-4 max-w-4xl"
-    >
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => navigate(-1)}
-        className="mb-2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded text-sm"
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ duration: 0.3 }}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-white/20"
       >
-        Back to List
-      </motion.button>
-      <div className="bg-white shadow-md rounded-lg p-4">
-        <div className="flex items-center mb-2">
-          <div className="w-[50px] h-[50px] rounded-full bg-orange-300 mr-2 flex items-center justify-center text-white text-[20px]">
-            <p>{request?.userName?.charAt(0)?.toUpperCase()}</p>
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">{request?.userName}</h1>
-            <p className="text-gray-600 text-xs">{request?.storeName}</p>
-          </div>
+        {/* Header / Banner */}
+        <div className="relative h-28 bg-gradient-to-r from-orange-400 to-orange-500">
+          <button
+            onClick={() => navigate(-1)}
+            className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full backdrop-blur-md transition-all"
+          >
+            <FiX size={20} />
+          </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-          <div>
-            <h2 className="text-lg font-semibold mb-1">Vendor Information</h2>
-            <p><strong>Email:</strong> {request?.email}</p>
-            <p><strong>Phone:</strong> {request?.storePhone}</p>
-            <p><strong>Category:</strong> {request?.craftCategories}</p>
-            <div className="mt-1">
-              <strong>Store Type:</strong>
-              <div className="mt-1 flex space-x-1">
-                {(["Counter", "Shelve", "Shop"] as StoreType[]).map((type) => (
-                  <motion.button
-                    key={type}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleStoreTypeChange(type)}
-                    className={`py-0.5 px-2 rounded-full text-xs font-medium ${
-                      request.storeType === type
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-200 text-gray-800 hover:bg-gray-300"
-                    }`}
-                  >
-                    {type}
-                  </motion.button>
-                ))}
+
+        {/* Modal Body */}
+        <div className="px-8 pb-8">
+          {/* Avatar & Title */}
+          <div className="relative flex flex-col items-center -mt-14 mb-6">
+            <div className="w-28 h-28 rounded-full bg-white p-1.5 shadow-lg mb-3">
+              <div className="w-full h-full rounded-full bg-orange-100 flex items-center justify-center text-orange-500 text-3xl font-bold overflow-hidden border border-gray-100">
+                {request.logo ? (
+                  <img src={request.logo} alt={request.storeName} className="w-full h-full object-cover" />
+                ) : (
+                  request.storeName?.charAt(0).toUpperCase() || "S"
+                )}
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 text-center">{request.storeName}</h2>
+            <div className={`mt-2 flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(request.verificationStatus)}`}>
+              {getStatusIcon(request.verificationStatus)}
+              {request.verificationStatus || "Pending"}
+            </div>
+          </div>
+
+          {/* Details Grid */}
+          <div className="bg-gray-50 rounded-2xl p-6 space-y-5 border border-gray-100">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-200/60">
+              <span className="text-sm text-gray-500">Email Address</span>
+              <span className="font-semibold text-gray-800 text-right">{request.email || "N/A"}</span>
+            </div>
+            
+            <div className="flex justify-between items-center pb-3 border-b border-gray-200/60">
+              <span className="text-sm text-gray-500">Phone Number</span>
+              <span className="font-semibold text-gray-800 text-right">{formatPhoneNumber(request.storePhone)}</span>
+            </div>
+
+            <div className="flex justify-between items-center pb-3 border-b border-gray-200/60">
+              <span className="text-sm text-gray-500">Registration Date</span>
+              <span className="font-semibold text-gray-800 text-right">
+                {request.createdAt ? new Date(request.createdAt).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }) : "N/A"}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center pb-3 border-b border-gray-200/60">
+              <span className="text-sm text-gray-500">Store Type</span>
+              <span className="font-semibold text-gray-800 text-right">{request.storeType || "N/A"}</span>
+            </div>
+
+            <div className="flex justify-between items-start">
+              <span className="text-sm text-gray-500 mt-1">Categories</span>
+              <div className="flex flex-wrap gap-2 justify-end max-w-[60%]">
+                {request.craftCategories?.length > 0 ? (
+                  request.craftCategories.map((cat, idx) => (
+                    <span key={idx} className="bg-orange-100 text-orange-700 px-2.5 py-1 rounded-lg text-xs font-medium border border-orange-200">
+                      {cat}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-gray-400 font-medium text-sm">None</span>
+                )}
               </div>
             </div>
           </div>
-          <div>
-            <h2 className="text-lg font-semibold mb-1">Store Details</h2>
-            <p><strong>Country:</strong> {request?.country}</p>
-            <p><strong>Address:</strong> {request?.address1}</p>
-            <p>
-              <strong>Status:</strong>{" "}
-              <span
-                className={`font-semibold ${
-                  request.verificationStatus === "Approved"
-                    ? "text-green-600"
-                    : request.verificationStatus === "Rejected"
-                    ? "text-red-600"
-                    : "text-blue-600"
-                }`}
+
+          {/* Footer Actions */}
+          <div className="mt-8 flex gap-3">
+            {request.verificationStatus === "Pending" ? (
+              <>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleAction("Rejected")}
+                  disabled={loading === "Rejected"}
+                  className="flex-1 py-3 bg-red-50 text-red-600 font-bold rounded-xl border border-red-100 hover:bg-red-100 transition-colors flex items-center justify-center disabled:opacity-50"
+                >
+                  {loading === "Rejected" ? <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div> : "Reject"}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleAction("Approved")}
+                  disabled={loading === "Approved"}
+                  className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold rounded-xl shadow-md hover:from-orange-600 hover:to-orange-700 transition-colors flex items-center justify-center disabled:opacity-50"
+                >
+                  {loading === "Approved" ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Approve"}
+                </motion.button>
+              </>
+            ) : (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleAction("Pending")}
+                disabled={loading === "Pending"}
+                className="w-full py-3 bg-yellow-500 text-white font-bold rounded-xl shadow-md hover:bg-yellow-600 transition-colors flex items-center justify-center disabled:opacity-50"
               >
-                {request?.verificationStatus}
-              </span>
-            </p>
-            <p>
-              <strong>Created At:</strong> {new Date(request?.createdAt).toLocaleString()}
-            </p>
+                {loading === "Pending" ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Revert to Pending"}
+              </motion.button>
+            )}
           </div>
         </div>
-        <div className="mt-2">
-          <h2 className="text-lg font-semibold mb-1">Store Logo</h2>
-          <img
-            src={mbayy}
-            alt={`${request?.storeName} logo`}
-            className="w-16 h-16 object-contain border border-gray-200 rounded-lg"
-          />
-        </div>
-        <div className="mt-2">
-          <h2 className="text-lg font-semibold mb-1">Description</h2>
-          <p className="text-xs text-gray-700">{request?.description}</p>
-        </div>
-        <div className="mt-2 flex space-x-2">
-          {request.verificationStatus === "Pending" && (
-            <>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleAction("Approved")}
-                style={{width:"100px",height:"40px"}}
-                disabled={loading === "Approved"}
-                className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-xs"
-              >
-                {loading === "Approved" ? "Loading..." : "Approve"}
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleAction("Rejected")}
-                style={{width:"100px",height:"40px"}}
-                disabled={loading === "Rejected"}
-                className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded text-xs"
-              >
-                {loading === "Rejected" ? "Loading..." : "Reject"}
-              </motion.button>
-            </>
-          )}
-          {(request.verificationStatus === "Approved" || request.verificationStatus === "Rejected") && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              style={{width:"100px",height:"40px"}}
-              onClick={() => handleAction("Pending")}
-              disabled={loading === "Pending"}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded text-xs"
-            >
-              {loading === "Pending" ? "Loading..." : "Revert"}
-            </motion.button>
-          )}
-        </div>
-      </div>
-    </motion.div>
-  )
-}
+      </motion.div>
+    </div>
+  );
+};
 
-export default RequestDetailPage
+export default RequestDetailPage;

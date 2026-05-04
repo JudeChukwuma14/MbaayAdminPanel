@@ -40,15 +40,20 @@ const LoginAdmin = () => {
     try {
       const response = await loginAdmin(data);
       console.log(response);
-      const token = response?.data?.token;
+      
+      const token = response?.accessToken || response?.data?.token || response?.token;
+      const refreshToken = response?.refreshToken || response?.data?.refreshToken;
+      const user = response?.user || response?.data?.user;
+      
       const decoded: any = jwtDecode(token);
       console.log(decoded);
 
-      if (response?.data?.user && response?.data?.token && decoded) {
+      if (user && token && decoded) {
         dispatch(
           setAdmin({
-            admin: response.data.user,
-            token: response.data.token,
+            admin: user,
+            token: token,
+            refreshToken: refreshToken,
             role: decoded?.role,
           })
         );

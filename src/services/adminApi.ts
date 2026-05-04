@@ -1,5 +1,7 @@
 import axios from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import store from "../components/redux/store";
+import { updateAccessToken, logout } from "../components/redux/slices/adminSlice";
 
 const API_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/admin";
 export const api = axios.create({
@@ -23,6 +25,46 @@ const API_BASE_URL_NOT =
 
 export const notApi = axios.create({
   baseURL: API_BASE_URL_NOT,
+});
+
+// Axios interceptor to handle token refresh automatically
+const instances = [api, com, PRO, notApi];
+
+instances.forEach((instance) => {
+  instance.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      const originalRequest = error.config;
+      
+      // If the error status is 401 and there is no originalRequest._retry flag,
+      // it means the token has expired and we need to refresh it
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+
+        try {
+          const state = store.getState();
+          const refreshToken = state.admin?.refreshToken;
+          
+          if (refreshToken) {
+            const res = await axios.post(`${API_BASE_URL}/refresh_token`, { refreshToken });
+            const newAccessToken = res.data?.accessToken || res.data?.token;
+            
+            if (newAccessToken) {
+              store.dispatch(updateAccessToken(newAccessToken));
+              // Update the authorization header with the new token
+              originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+              return instance(originalRequest);
+            }
+          }
+        } catch (err) {
+          // If the refresh token is also expired or invalid, log the user out
+          store.dispatch(logout());
+          return Promise.reject(err);
+        }
+      }
+      return Promise.reject(error);
+    }
+  );
 });
 export const createAdmin = async (userData: any) => {
   try {
