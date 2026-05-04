@@ -36,9 +36,18 @@ instances.forEach((instance) => {
     async (error) => {
       const originalRequest = error.config;
       
-      // If the error status is 401 and there is no originalRequest._retry flag,
+      const status = error.response?.status;
+      const errorMsg = error.response?.data?.message?.toLowerCase() || "";
+      const isTokenError = 
+        status === 401 || 
+        status === 403 || 
+        errorMsg.includes("invalid token") || 
+        errorMsg.includes("token expired") || 
+        errorMsg.includes("unauthorized");
+
+      // If the error is token related and there is no originalRequest._retry flag,
       // it means the token has expired and we need to refresh it
-      if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isTokenError && !originalRequest._retry) {
         originalRequest._retry = true;
 
         try {
