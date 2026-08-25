@@ -26,7 +26,10 @@ const NewProduct = () => {
   const [quantity, setQuantity] = useState("0");
   const [sku, setSku] = useState("");
   const [price, setPrice] = useState("");
-  const [shippingprice, setShippingPrice] = useState("");
+  const [shippingType, setShippingType] = useState<
+    "Free" | "Fixed" | "Negotiable"
+  >("Free");
+  const [shippingFee, setShippingFee] = useState("");
   const [productImages, setProductImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [descriptionFileName, setDescriptionFileName] = useState("");
@@ -90,7 +93,8 @@ const NewProduct = () => {
       quantity !== "0" ||
       sku ||
       price ||
-      shippingprice ||
+      shippingFee ||
+      shippingType !== "Free" ||
       productImages?.length > 0 ||
       youtubeEmbedUrl ||
       uploadedVideoInfo
@@ -104,6 +108,8 @@ const NewProduct = () => {
     quantity,
     sku,
     price,
+    shippingFee,
+    shippingType,
     productImages,
     youtubeEmbedUrl,
     uploadedVideoInfo,
@@ -183,7 +189,8 @@ const NewProduct = () => {
     setQuantity("0");
     setSku("");
     setPrice("");
-    setShippingPrice("");
+    setShippingFee("");
+    setShippingType("Free");
     setProductImages([]);
     setImagePreviewUrls([]);
     setYoutubeUrl("");
@@ -222,7 +229,8 @@ const NewProduct = () => {
     setQuantity("0");
     setSku("");
     setPrice("");
-    setShippingPrice("");
+    setShippingFee("");
+    setShippingType("Free");
     setProductImages([]);
     setImagePreviewUrls([]);
     setYoutubeUrl("");
@@ -267,7 +275,8 @@ const NewProduct = () => {
         quantity,
         sku,
         price,
-        shippingprice,
+        shippingFee,
+        shippingType,
         descriptionFileName,
         listingType,
         auctionDetails,
@@ -326,7 +335,8 @@ const NewProduct = () => {
       setQuantity(d.quantity ?? "0");
       setSku(d.sku || "");
       setPrice(d.price || "");
-      setShippingPrice(d.shippingprice || "");
+      setShippingFee(d.shippingFee || "");
+      setShippingType(d.shippingType || "Free");
       setDescriptionFileName(d.descriptionFileName || "");
       setListingType(d.listingType || "sales");
       if (d.auctionDetails) setAuctionDetails(d.auctionDetails);
@@ -389,6 +399,15 @@ const NewProduct = () => {
       if (productImages.length === 0)
         throw new Error("Please upload at least one product image");
 
+      /* ----------  shipping validation  ---------- */
+      if (!shippingType) throw new Error("Please select a shipping type");
+      let resolvedShippingFee = 0;
+      if (shippingType === "Fixed") {
+        resolvedShippingFee = toNumber(shippingFee);
+        if (isNaN(resolvedShippingFee) || resolvedShippingFee <= 0)
+          throw new Error("Please enter a valid shipping fee");
+      }
+
       /* ----------  flash sale validation  ---------- */
       if (listingType === "flash sale") {
         // Ensure original price exists for flash sale validations
@@ -437,14 +456,15 @@ const NewProduct = () => {
       /* --- product type flag --- */
       formData.append("productType", listingType); // "sales" | "auction"
 
+      /* --- shipping --- */
+      formData.append("shippingType", shippingType);
+      if (shippingType === "Fixed") {
+        formData.append("shippingFee", resolvedShippingFee.toString());
+      }
+
       /* --- pricing / auction fields --- */
       if (listingType === "sales") {
-        const shipFee = toNumber(shippingprice);
-        if (isNaN(shipFee))
-          throw new Error("Please enter a valid shipping fee");
-
         formData.append("price", toNumber(price).toString());
-        formData.append("shippingfee", shipFee.toString());
       } else if (listingType === "auction") {
         formData.append("startingPrice", numericPrice.toString());
         formData.append(
@@ -456,13 +476,10 @@ const NewProduct = () => {
           "auctionStartDate",
           new Date(auctionDetails.auctionstartTime).toISOString()
         );
-        formData.append("shippingfee", "0");
       } else if (listingType === "flash sale") {
         // originalPrice is required by backend; use the regular price value here
         formData.append("originalPrice", toNumber(price).toString());
         formData.append("price", toNumber(price).toString());
-        // Flash sale does not require shipping price; set shipping fee to 0
-        formData.append("shippingfee", "0");
         formData.append(
           "flashSalePrice",
           toNumber(flashSaleDetails.flashSalePrice).toString()
@@ -653,6 +670,78 @@ const NewProduct = () => {
             />
           </div>
         </div>
+
+        <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
+          <h2 className="pb-3 mb-5 text-base font-semibold text-gray-800 border-b border-gray-100">
+            Shipping
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block mb-2 text-sm text-gray-600">
+                Shipping Type
+              </label>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {[
+                  { value: "Free", label: "Free" },
+                  { value: "Fixed", label: "Fixed Fee" },
+                  { value: "Negotiable", label: "Chat to Agree" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() =>
+                      setShippingType(opt.value as "Free" | "Fixed" | "Negotiable")
+                    }
+                    className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                      shippingType === opt.value
+                        ? "bg-orange-50 border-orange-500 text-orange-600"
+                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                    aria-pressed={shippingType === opt.value}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <AnimatePresence initial={false}>
+              {shippingType === "Fixed" && (
+                <motion.div
+                  key="fixed-shipping-fee"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="overflow-hidden"
+                >
+                  <label className="block mb-1 text-sm text-gray-600">
+                    Shipping Fee
+                  </label>
+                  <CurrencyInput
+                    value={shippingFee}
+                    onChange={setShippingFee}
+                    country="Nigeria"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {shippingType === "Free" && (
+              <p className="text-sm text-gray-500">
+                No shipping charge will be added at checkout.
+              </p>
+            )}
+            {shippingType === "Negotiable" && (
+              <p className="text-sm text-gray-500">
+                No fixed fee — the buyer and vendor agree a price via chat.
+                It won't be charged through checkout; it's collected offline
+                on delivery.
+              </p>
+            )}
+          </div>
+        </div>
+
         <div className="p-5 bg-white rounded-lg border border-gray-200 shadow-sm">
           <h2 className="pb-3 mb-5 text-base font-semibold text-gray-800 border-b border-gray-100">
             {listingType === "sales"
@@ -663,8 +752,8 @@ const NewProduct = () => {
           </h2>
 
         {listingType === "sales" ? (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="space-y-4 md:col-span-2">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="space-y-4">
               <h3 className="font-medium">Inventory</h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
@@ -707,17 +796,6 @@ const NewProduct = () => {
                   country="Nigeria"
                 />
               </div>
-            </div>
-
-            <div className="space-y-4">
-              <label className="block mb-1 text-sm text-gray-600">
-                Shipping fee
-              </label>
-              <CurrencyInput
-                value={shippingprice}
-                onChange={setShippingPrice}
-                country="Nigeria"
-              />
             </div>
           </div>
         ) : listingType === "auction" ? (
