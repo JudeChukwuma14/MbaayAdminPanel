@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   getOneAdminProduct,
   updateAdminProduct,
+  updateProductShippingFee,
   deleteAdminProduct,
 } from "@/services/adminApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -27,7 +28,8 @@ interface Product {
   name: string;
   description: string;
   price: number;
-  shippingprice: number;
+  shippingType?: "Free" | "Fixed" | "Negotiable";
+  shippingFee?: number;
   inventory: number;
   category: string;
   sub_category: string;
@@ -182,8 +184,6 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         formData.append("description", updatedProduct.description);
       if (updatedProduct.price)
         formData.append("price", updatedProduct.price.toString());
-      if (updatedProduct.shippingprice)
-        formData.append("price", updatedProduct.shippingprice.toString());
       if (updatedProduct.inventory)
         formData.append("inventory", updatedProduct.inventory.toString());
       // Flash sale / auction fields
@@ -274,6 +274,29 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     },
   });
 
+  // Update shipping fee mutation (dedicated endpoint)
+  const updateShippingMutation = useMutation({
+    mutationFn: (shipping: {
+      shippingType: "Free" | "Fixed" | "Negotiable";
+      shippingFee?: number;
+    }) => updateProductShippingFee(productId, shipping, user.token),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["one_product", productId] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Shipping updated successfully", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    },
+    onError: (error) => {
+      console.error("Error updating shipping fee:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update shipping",
+        { position: "top-right", autoClose: 4000 },
+      );
+    },
+  });
+
   // Delete product mutation
   const deleteMutation = useMutation({
     mutationFn: () => deleteAdminProduct(productId, user.token),
@@ -347,7 +370,8 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           name: productData.name,
           description: productData.description,
           price: productData.price,
-          shippingprice: productData.shippingprice,
+          shippingType: productData.shippingType,
+          shippingFee: productData.shippingFee,
           inventory: productData.inventory,
           images: productData.images,
           product_video: productData.product_video,
@@ -488,7 +512,7 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     const numberFields = new Set([
       "price",
       "inventory",
-      "shippingprice",
+      "shippingFee",
       "originalPrice",
       "flashSalePrice",
       "flashSaleDiscount",
@@ -604,6 +628,23 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       updateMutation.mutate(editedProduct);
     } else {
       formRef.current?.reportValidity();
+    }
+  };
+
+  const handleUpdateShipping = () => {
+    const shippingType = editedProduct.shippingType || "Free";
+    if (shippingType === "Fixed") {
+      const fee = editedProduct.shippingFee;
+      if (fee == null || Number.isNaN(fee) || fee <= 0) {
+        toast.error("Please enter a valid shipping fee", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+      updateShippingMutation.mutate({ shippingType, shippingFee: fee });
+    } else {
+      updateShippingMutation.mutate({ shippingType });
     }
   };
 
@@ -969,34 +1010,79 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     </p>
                   )}
                 </div>
-                <div>
+                <div className="col-span-2">
                   <h3 className="text-sm font-medium text-gray-500 sm:text-base">
-                    Shipping fee
+                    Shipping
                   </h3>
-                  {isEditing ? (
-                    <div className="">
-                      <div className="flex ">
+                  <p className="mb-2 text-sm text-gray-600">
+                    Current:{" "}
+                    <span className="font-semibold text-gray-800">
+                      {productData.shippingType === "Fixed"
+                        ? `₦${productData.shippingFee?.toFixed(2)}`
+                        : productData.shippingType === "Negotiable"
+                          ? "Chat to Agree"
+                          : "Free"}
+                    </span>
+                  </p>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["Free", "Fixed", "Negotiable"] as const).map(
+                        (opt) => (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() =>
+                              setEditedProduct({
+                                ...editedProduct,
+                                shippingType: opt,
+                              })
+                            }
+                            className={`px-3 py-2 text-xs sm:text-sm font-medium rounded-md border transition-colors ${
+                              editedProduct.shippingType === opt
+                                ? "bg-blue-50 border-blue-500 text-blue-600"
+                                : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            {opt === "Negotiable" ? "Chat to Agree" : opt}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                    {editedProduct.shippingType === "Fixed" && (
+                      <div className="flex">
                         <span className="flex items-center pl-3 mr-2 text-gray-500">
                           ₦
                         </span>
-                        <motion.input
+                        <input
                           type="number"
-                          id="price"
-                          name="price"
-                          value={editedProduct.shippingprice || "50"}
+                          id="shippingFee"
+                          name="shippingFee"
+                          value={editedProduct.shippingFee ?? ""}
                           onChange={handleInputChange}
                           className="w-[80%] pl-7 p-2 sm:p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                           step="0.01"
                           min="0"
-                          required
                         />
                       </div>
-                    </div>
-                  ) : (
-                    <p className="text-lg font-bold sm:text-xl">
-                      ₦{productData.shippingprice?.toFixed(2)}
-                    </p>
-                  )}
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleUpdateShipping}
+                      disabled={
+                        updateShippingMutation.isPending ||
+                        (editedProduct.shippingType ===
+                          productData.shippingType &&
+                          (editedProduct.shippingType !== "Fixed" ||
+                            editedProduct.shippingFee ===
+                              productData.shippingFee))
+                      }
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {updateShippingMutation.isPending
+                        ? "Updating…"
+                        : "Update Shipping"}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 sm:text-base">

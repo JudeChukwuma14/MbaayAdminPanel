@@ -27,8 +27,14 @@ export const notApi = axios.create({
   baseURL: API_BASE_URL_NOT,
 });
 
+const API_BASE_URL_VENDOR = "https://ilosiwaju-mbaay-2025.com/api/v1/vendor";
+
+export const vendorApi = axios.create({
+  baseURL: API_BASE_URL_VENDOR,
+});
+
 // Axios interceptor to handle token refresh automatically
-const instances = [api, com, PRO, notApi];
+const instances = [api, com, PRO, notApi, vendorApi];
 
 instances.forEach((instance) => {
   instance.interceptors.response.use(
@@ -727,6 +733,34 @@ export const updateAdminProduct = async (
     return response.data;
   } catch (error: any) {
     console.error("Error updating admin product:", error);
+    throw error.response?.data?.message || error.message || error;
+  }
+};
+
+export const updateProductShippingFee = async (
+  productId: string,
+  data: { shippingType: "Free" | "Fixed" | "Negotiable"; shippingFee?: number },
+  token: any,
+) => {
+  try {
+    if (!token) {
+      throw new Error("No token provided");
+    }
+
+    const response = await vendorApi.patch(
+      `/order/${productId}/update-shipping`,
+      data,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    console.log("Update product shipping fee response:", response);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error updating product shipping fee:", error);
     throw error.response?.data?.message || error.message || error;
   }
 };

@@ -684,7 +684,7 @@ const NewProduct = () => {
                 {[
                   { value: "Free", label: "Free" },
                   { value: "Fixed", label: "Fixed Fee" },
-                  { value: "Negotiable", label: "Chat to Agree" },
+                  { value: "Negotiable", label: "Destination Based Cost" },
                 ].map((opt) => (
                   <button
                     key={opt.value}
