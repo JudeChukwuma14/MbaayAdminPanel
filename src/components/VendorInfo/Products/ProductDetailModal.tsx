@@ -1020,7 +1020,7 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       {productData.shippingType === "Fixed"
                         ? `₦${productData.shippingFee?.toFixed(2)}`
                         : productData.shippingType === "Negotiable"
-                          ? "Chat to Agree"
+                          ? "Destination Based Cost"
                           : "Free"}
                     </span>
                   </p>
@@ -1039,11 +1039,11 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                             }
                             className={`px-3 py-2 text-xs sm:text-sm font-medium rounded-md border transition-colors ${
                               editedProduct.shippingType === opt
-                                ? "bg-blue-50 border-blue-500 text-blue-600"
+                                ? "bg-orange-50 border-orange-500 text-orange-600"
                                 : "border-gray-300 text-gray-600 hover:bg-gray-50"
                             }`}
                           >
-                            {opt === "Negotiable" ? "Chat to Agree" : opt}
+                            {opt === "Negotiable" ? "Destination Based Cost" : opt}
                           </button>
                         ),
                       )}
@@ -1059,7 +1059,7 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                           name="shippingFee"
                           value={editedProduct.shippingFee ?? ""}
                           onChange={handleInputChange}
-                          className="w-[80%] pl-7 p-2 sm:p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                          className="w-[80%] pl-7 p-2 sm:p-3 border border-gray-300 rounded-md focus:ring-orangeange-500 focus:border-orangeange-500 text-sm sm:text-base"
                           step="0.01"
                           min="0"
                         />
@@ -1076,7 +1076,7 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                             editedProduct.shippingFee ===
                               productData.shippingFee))
                       }
-                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
                       {updateShippingMutation.isPending
                         ? "Updating…"
@@ -1096,7 +1096,7 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                         name="inventory"
                         value={editedProduct.inventory || ""}
                         onChange={handleInputChange}
-                        className="w-full p-2 text-sm border border-gray-300 rounded-md sm:p-3 focus:ring-blue-500 focus:border-blue-500 sm:text-base"
+                        className="w-full p-2 text-sm border border-gray-300 rounded-md sm:p-3 focus:ring-orange-500 focus:border-orange-500 sm:text-base"
                         min="0"
                         required
                       />
