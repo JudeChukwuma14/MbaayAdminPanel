@@ -1,10 +1,8 @@
-import axios from "axios";
+import { createAuthenticatedApi } from "../services/authSession";
 
 const API_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/chat";
 
-export const api = axios.create({
-  baseURL: API_BASE_URL,
-});
+export const api = createAuthenticatedApi(API_BASE_URL);
 
 // Create or get existing chat
 export const create_or_get_chat = async (
@@ -258,9 +256,7 @@ export const markChatAsRead = async (chatId: string, userId: string) => {
 
 const API_BASE_URL_USER = "https://ilosiwaju-mbaay-2025.com/api/v1/user";
 
-export const Api = axios.create({
-  baseURL: API_BASE_URL_USER ,
-});
+export const Api = createAuthenticatedApi(API_BASE_URL_USER);
 
 export const GetUserAll = async () => {
   try {

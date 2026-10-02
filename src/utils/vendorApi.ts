@@ -1,11 +1,11 @@
 import axios from "axios";
+import { createAuthenticatedApi } from "../services/authSession";
 
 const API_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/vendor";
 const CHAT_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/chat";
 
-export const api = axios.create({
-  baseURL: API_BASE_URL,
-});
+export const api = createAuthenticatedApi(API_BASE_URL);
+const chatApi = createAuthenticatedApi(CHAT_BASE_URL);
 
 
 export const get_single_vendor = async (token: string | null) => {
@@ -109,9 +109,10 @@ export const vendorKycUpload = async (token: string | null, data: any) => {
 };
 
 const NotBaseUrl = "https://ilosiwaju-mbaay-2025.com/api/v1/notifications";
+const notificationApi = createAuthenticatedApi(NotBaseUrl);
 export const getVendorNotification = async (id: string | null) => {
   try {
-    const response = await axios.get(`${NotBaseUrl}/allnotifications/${id}`);
+    const response = await notificationApi.get(`/allnotifications/${id}`);
     console.log(response);
     return response.data;
   } catch (error) {
@@ -126,8 +127,8 @@ export const markOneAsRead = async (
   try {
     // Backend expects: {BASE}/notifications/{notificationId}/{vendorId}
     // Here BASE is .../api/v1/notifications, but routes are under an extra 'notifications' segment, consistent with read-all
-    const response = await axios.patch(
-      `${NotBaseUrl}/notifications/${notificationId}/${vendorId}`
+    const response = await notificationApi.patch(
+      `/notifications/${notificationId}/${vendorId}`
     );
     return response.data;
   } catch (error) {
@@ -137,8 +138,8 @@ export const markOneAsRead = async (
 
 export const markVendorNotificationAsRead = async (id: string | null) => {
   try {
-    const response = await axios.patch(
-      `${NotBaseUrl}/notifications/read-all/${id}`
+    const response = await notificationApi.patch(
+      `/notifications/read-all/${id}`
     );
     return response.data;
   } catch (error) {
@@ -149,8 +150,8 @@ export const markVendorNotificationAsRead = async (id: string | null) => {
 // ---- Chat helpers (added per request) ----
 export const get_unread_chat_count = async (userId: string) => {
   try {
-    const res = await axios.get(
-      `${CHAT_BASE_URL}/get_unread_chat_count/${userId}`
+    const res = await chatApi.get(
+      `/get_unread_chat_count/${userId}`
     );
     console.log("Data" + res);
     return res.data; // expected { count }
@@ -162,8 +163,8 @@ export const get_unread_chat_count = async (userId: string) => {
 
 export const mark_chat_as_read = async (chatId: string, userId: string) => {
   try {
-    const res = await axios.patch(
-      `${CHAT_BASE_URL}/mark_chat_as_read/${chatId}/${userId}`
+    const res = await chatApi.patch(
+      `/mark_chat_as_read/${chatId}/${userId}`
     );
     return res.data;
   } catch (error) {
@@ -287,6 +288,7 @@ export const updateStoreDetails = async (
 
 // ---- Reviews endpoints used by vendor ----
 const REVIEWS_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/reviews";
+const reviewsApi = createAuthenticatedApi(REVIEWS_BASE_URL);
 
 /** Reply to a review (public or private reply)
  * PATCH /api/reviews/reply
@@ -300,8 +302,8 @@ export const replyToReview = async (
     // The backend expects reviewId in both the URL params and request body
     const body = { reviewId, ...payload } as Record<string, any>;
 
-    const response = await axios.patch(
-      `${REVIEWS_BASE_URL}/reply/${reviewId}`,
+    const response = await reviewsApi.patch(
+      `/reply/${reviewId}`,
       body,
       {
         headers: {
@@ -329,8 +331,8 @@ export const sendPrivateReviewMessage = async (
   body: { reviewId: string; message: string; messageType?: string }
 ) => {
   try {
-    const response = await axios.post(
-      `${REVIEWS_BASE_URL}/private-message`,
+    const response = await reviewsApi.post(
+      "/private-message",
       body,
       {
         headers: {
@@ -353,7 +355,7 @@ export const sendPrivateReviewMessage = async (
  */
 export const getVendorReviews = async (token: string | null) => {
   try {
-    const response = await axios.get(`${REVIEWS_BASE_URL}/vendor`, {
+    const response = await reviewsApi.get("/vendor", {
       headers: {
         Authorization: `Bearer ${token}`,
       },

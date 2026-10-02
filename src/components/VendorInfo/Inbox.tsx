@@ -22,7 +22,7 @@ import {
   useMediaQuery,
   CircularProgress,
 } from "@mui/material";
-import axios from "axios";
+import { api } from "../../services/adminApi";
 import { useSelector } from "react-redux";
 import { jwtDecode } from "jwt-decode";
 import {
@@ -104,7 +104,6 @@ const Inbox = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const adminToken = useSelector((state: RootState) => state.admin.token);
-  const API_CHAT_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/admin";
   const token = adminToken ? jwtDecode(adminToken as string) as {
     _id: string;
     name: string;
@@ -135,8 +134,8 @@ const Inbox = () => {
         } else {
           setIsBackgroundRefresh(true);
         }
-        const res = await axios.get(
-          `${API_CHAT_BASE_URL}/customer_care_messages`,
+        const res = await api.get(
+          "/customer_care_messages",
           {
             headers: {
               Authorization: `Bearer ${adminToken}`,
@@ -236,8 +235,8 @@ const Inbox = () => {
         if (!isBackground) {
           setMessagesLoading(true);
         }
-        const res = await axios.get(
-          `${API_CHAT_BASE_URL}/customer_care_chatmessages/${chatId}`,
+        const res = await api.get(
+          `/customer_care_chatmessages/${chatId}`,
           {
             headers: {
               Authorization: `Bearer ${adminToken}`,
@@ -492,8 +491,8 @@ const Inbox = () => {
 
       // Also send to the REST API as a fallback
       try {
-        await axios.post(
-          `${API_CHAT_BASE_URL}/send-message`,
+        await api.post(
+          "/send-message",
           {
             chatId: selectedChat,
             content: message,

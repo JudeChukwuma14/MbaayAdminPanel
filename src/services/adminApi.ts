@@ -1,86 +1,25 @@
-import axios from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import store from "../components/redux/store";
-import { updateAccessToken, logout } from "../components/redux/slices/adminSlice";
+import { createAuthenticatedApi } from "./authSession";
 
 const API_BASE_URL = "https://ilosiwaju-mbaay-2025.com/api/v1/admin";
-export const api = axios.create({
-  baseURL: API_BASE_URL,
-});
+export const api = createAuthenticatedApi(API_BASE_URL);
 
 const API_BASE_URL_COM = "https://ilosiwaju-mbaay-2025.com/api/v1/community";
 
-export const com = axios.create({
-  baseURL: API_BASE_URL_COM,
-});
+export const com = createAuthenticatedApi(API_BASE_URL_COM);
 
 const API_BASE_URL_PRO = "https://ilosiwaju-mbaay-2025.com/api/v1/products";
 
-export const PRO = axios.create({
-  baseURL: API_BASE_URL_PRO,
-});
+export const PRO = createAuthenticatedApi(API_BASE_URL_PRO);
 
 const API_BASE_URL_NOT =
   "https://ilosiwaju-mbaay-2025.com/api/v1/notifications";
 
-export const notApi = axios.create({
-  baseURL: API_BASE_URL_NOT,
-});
+export const notApi = createAuthenticatedApi(API_BASE_URL_NOT);
 
 const API_BASE_URL_VENDOR = "https://ilosiwaju-mbaay-2025.com/api/v1/vendor";
 
-export const vendorApi = axios.create({
-  baseURL: API_BASE_URL_VENDOR,
-});
-
-// Axios interceptor to handle token refresh automatically
-const instances = [api, com, PRO, notApi, vendorApi];
-
-instances.forEach((instance) => {
-  instance.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-      const originalRequest = error.config;
-      
-      const status = error.response?.status;
-      const errorMsg = error.response?.data?.message?.toLowerCase() || "";
-      const isTokenError = 
-        status === 401 || 
-        status === 403 || 
-        errorMsg.includes("invalid token") || 
-        errorMsg.includes("token expired") || 
-        errorMsg.includes("unauthorized");
-
-      // If the error is token related and there is no originalRequest._retry flag,
-      // it means the token has expired and we need to refresh it
-      if (isTokenError && !originalRequest._retry) {
-        originalRequest._retry = true;
-
-        try {
-          const state = store.getState();
-          const refreshToken = state.admin?.refreshToken;
-          
-          if (refreshToken) {
-            const res = await axios.post(`${API_BASE_URL}/refresh_token`, { refreshToken });
-            const newAccessToken = res.data?.accessToken || res.data?.token;
-            
-            if (newAccessToken) {
-              store.dispatch(updateAccessToken(newAccessToken));
-              // Update the authorization header with the new token
-              originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-              return instance(originalRequest);
-            }
-          }
-        } catch (err) {
-          // If the refresh token is also expired or invalid, log the user out
-          store.dispatch(logout());
-          return Promise.reject(err);
-        }
-      }
-      return Promise.reject(error);
-    }
-  );
-});
+export const vendorApi = createAuthenticatedApi(API_BASE_URL_VENDOR);
 export const createAdmin = async (userData: any) => {
   try {
     const response = await api.post("/create_admin", userData);
@@ -96,8 +35,7 @@ export const loginAdmin = async (userData: any) => {
     const response = await api.post("/login_admin", userData);
     return response.data;
   } catch (error: any) {
-    console.error("Signup Error:", error.response?.data || error);
-    throw error.response?.data?.message || "Failed to create account";
+    throw new Error(error.response?.data?.message || "Failed to log in. Please try again.");
   }
 };
 

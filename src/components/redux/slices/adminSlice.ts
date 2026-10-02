@@ -12,6 +12,7 @@ interface AdminState {
   token: string | null;
   refreshToken: string | null;
   role: string | null;
+  sessionVersion: number;
 }
 
 // Initial state
@@ -20,6 +21,7 @@ const initialState: AdminState = {
   token: null,
   refreshToken: null,
   role: null,
+  sessionVersion: 0,
 };
 
 const adminSlice = createSlice({
@@ -32,23 +34,32 @@ const adminSlice = createSlice({
     ) => {
       state.admin = action.payload.admin;
       state.token = action.payload.token;
-      if (action.payload.refreshToken) {
+      state.refreshToken = action.payload.refreshToken ?? null;
+      state.role = action.payload.role;
+      state.sessionVersion = (state.sessionVersion ?? 0) + 1;
+    },
+    updateTokens: (
+      state,
+      action: PayloadAction<{ token: string; refreshToken?: string; role?: string }>
+    ) => {
+      state.token = action.payload.token;
+      if (action.payload.refreshToken !== undefined) {
         state.refreshToken = action.payload.refreshToken;
       }
-      state.role = action.payload.role;
-    },
-    updateAccessToken: (state, action: PayloadAction<string>) => {
-      state.token = action.payload;
+      if (action.payload.role !== undefined) {
+        state.role = action.payload.role;
+      }
     },
     logout: (state) => {
       state.admin = null;
       state.token = null;
       state.refreshToken = null;
       state.role = null;
+      state.sessionVersion = (state.sessionVersion ?? 0) + 1;
     },
   },
 });
 
 // Export actions and reducer
-export const { setAdmin, updateAccessToken, logout } = adminSlice.actions;
+export const { setAdmin, updateTokens, logout } = adminSlice.actions;
 export default adminSlice.reducer;

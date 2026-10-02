@@ -2,9 +2,9 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import { FcGoogle } from "react-icons/fc";
 import background from "../../assets/image/bg2.jpeg";
 import { toast, ToastContainer } from "react-toastify";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { motion } from "framer-motion";
 import Silding from "../reuseable/Sliding";
 import { Logo } from "../../assets/image";
@@ -13,7 +13,8 @@ import { loginAdmin } from "../../services/adminApi";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 import { jwtDecode } from "jwt-decode";
-
+import { RootState } from "../redux/store";
+import { AdminTokenClaims, getSessionTokens, isAccessTokenExpired, isAdminRole } from "../../services/authSession";
 
 const bg = {
   backgroundImage: `url(${background})`,
@@ -27,6 +28,7 @@ type FormData = {
 const LoginAdmin = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const session = useSelector((state: RootState) => state.admin);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const {
@@ -39,29 +41,26 @@ const LoginAdmin = () => {
     setIsLoading(true);
     try {
       const response = await loginAdmin(data);
-      console.log(response);
-      
-      const token = response?.accessToken || response?.data?.token || response?.token;
-      const refreshToken = response?.refreshToken || response?.data?.refreshToken;
+      const { token, refreshToken } = getSessionTokens(response);
       const user = response?.user || response?.data?.user;
-      
-      const decoded: any = jwtDecode(token);
-      console.log(decoded);
-
-      if (user && token && decoded) {
-        dispatch(
-          setAdmin({
-            admin: user,
-            token: token,
-            refreshToken: refreshToken,
-            role: decoded?.role,
-          })
-        );
-        toast.success(response.message || "Login successful");
-        navigate("/");
-      } else {
+      if (!user || !token) {
         throw new Error("Invalid response format from server");
       }
+      const decoded = jwtDecode<AdminTokenClaims>(token);
+      if (!isAdminRole(decoded.role)) {
+        throw new Error("This account does not have administrator access.");
+      }
+
+      dispatch(
+        setAdmin({
+          admin: user,
+          token,
+          refreshToken: refreshToken ?? undefined,
+          role: decoded.role,
+        })
+      );
+      toast.success(response.message || "Login successful");
+      navigate("/", { replace: true });
     } catch (err) {
       toast.error((err as Error)?.message || String(err), {
         position: "top-right",
@@ -78,6 +77,11 @@ const LoginAdmin = () => {
       autoClose: 3000,
     });
   };
+
+  if (session.token && isAdminRole(session.role) &&
+    (!isAccessTokenExpired(session.token) || session.refreshToken)) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="w-full h-screen">
@@ -160,11 +164,6 @@ const LoginAdmin = () => {
                       </p>
                     )}
                   </div>
-                </div>
-
-                <div className="flex items-center">
-                  <motion.input type="checkbox" className="mr-2" />
-                  <label className="text-sm">Keep me logged in</label>
                 </div>
 
                 <button
